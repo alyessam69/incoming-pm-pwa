@@ -29,6 +29,29 @@ Tap the **⬇️ Install app** button in the top bar (it appears as soon as the 
 After the first open the app works **offline** (the service worker caches the shell).
 The cloud buttons need a network.
 
+## 📊 Write straight into your Excel workbook
+
+Open **Daily incoming RM & PM.xlsx** once from the app, then the two blocks go where you
+paste them today — no copy, no paste, no file juggling:
+
+| Block | Goes to | Columns | Row |
+|---|---|---|---|
+| **Incoming Log** | `RM&PM 2026` | A–M | the first free row after the last one |
+| **Excel Log** | `WRAPPER GSM` | B–M | the first free row after the last one |
+
+- The values written are **exactly** the ones the Copy buttons produce (the app reads its own
+  `buildIncoming()` / `buildLog()` output — nothing is re-invented).
+- The new rows copy the look of the row above them, the AVERG column gets the live
+  `=AVERAGE(G:L)` formula like the rest of the sheet, and empty boxes stay empty.
+- **On a computer (Chrome / Edge):** the export writes into **the same file on disk** — your
+  workbook is updated in place, nothing is downloaded.
+- **On the phone:** the export gives you the updated file (and a *Send the updated file*
+  button to open it straight in Excel / Drive) — replace the old copy with it.
+- The file is re-read right before writing, so edits you made in Excel meanwhile are never lost.
+- The engine is [ExcelJS](https://github.com/exceljs/exceljs) (vendored in `vendor/`), which
+  keeps the sheets, the formulas, the number formats, the borders and the merged cells.
+  A workbook re-written by it keeps everything; only text line-breaks are normalised (CR→LF).
+
 ## The cloud
 
 - Same database as the other plant apps:

@@ -186,6 +186,23 @@
         <div class="sheet" id="log-preview"></div>
     </section>
 
+    <section class="card" id="xl-section">
+        <h2>📊 Write into your Excel workbook</h2>
+        <p class="sub">Open <b>Daily incoming RM &amp; PM.xlsx</b> once, then the Incoming Log goes into <b>RM&amp;PM 2026</b> and the Excel Log into <b>WRAPPER GSM</b> — straight to the first free row, exactly where you paste them today. On a computer the file itself is updated in place (no download).</p>
+        <div class="toolbar">
+            <button class="btn" onclick="PM.xlOpen()">📂 Open my Excel file</button>
+            <button class="btn" id="xl-write-btn" onclick="PM.xlWrite()" disabled>✍️ Write into the file</button>
+            <button class="btn" id="xl-share-btn" onclick="PM.xlShare()" hidden>📤 Send the updated file</button>
+        </div>
+        <div class="status" id="xl-status"></div>
+        <div class="grid2">
+            <div><label class="lb">Incoming Log → sheet</label><input type="text" id="xl-sheet-in" value="RM&amp;PM 2026" inputmode="text"></div>
+            <div><label class="lb">Excel Log → sheet</label><input type="text" id="xl-sheet-gsm" value="WRAPPER GSM" inputmode="text"></div>
+        </div>
+        <div class="sheet" id="xl-plan"></div>
+        <div class="store-note" id="xl-note"></div>
+    </section>
+
     <section class="card" id="cloud-section">
         <h2>☁️ Cloud (everything)</h2>
         <p class="sub">Everything lives in our encrypted cloud: the draft (ticks, quantities, truck, trader, pallet weights, generator) <b>and</b> the register rows. Any phone pulls the same work. This app has its own cloud path — the Soap Bar Daily Log is never touched.</p>
@@ -819,7 +836,10 @@
             cloudPushNow()
                 .then(() => cloudStatus('🗑 The register rows were cleared (the draft is untouched).'))
                 .catch(e => cloudStatus('🗑 The rows were cleared on this phone — the cloud failed: ' + e.message, 'bad'));
-        }
+        },
+        xlOpen() { xlOpen(); },
+        xlWrite() { xlWrite(); },
+        xlShare() { xlShare(); }
     };
 
     window.selectAll = on => { ITEMS.forEach(it => it.sel = on); refresh(); };
@@ -885,6 +905,225 @@
         if (!t) t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
         applyTheme(t);
     })();
+
+    // ---------- Excel workbook: write the rows straight into the plant file ----------
+    let xlBook = null, xlName = '', xlHandle = null, xlOut = null;
+
+    function xlStatus(msg, kind) {
+        const el = $('xl-status');
+        if (el) {
+            el.innerHTML = msg ? '<div>' + esc(msg) + '</div>' : '';
+            el.style.color = kind === 'bad' ? 'var(--bad)' : '';
+        }
+    }
+    async function xlEngine() {
+        if (window.ExcelJS) return window.ExcelJS;
+        await new Promise((res, rej) => {
+            const s = document.createElement('script');
+            s.src = 'vendor/exceljs.min.js';
+            s.onload = () => res();
+            s.onerror = () => rej(new Error('the Excel engine file is missing (vendor/exceljs.min.js)'));
+            document.head.appendChild(s);
+        });
+        return window.ExcelJS;
+    }
+    function xlCol(n) { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = (n - m - 1) / 26; } return s; }
+    function xlNum(v) {
+        const s = String(v === undefined || v === null ? '' : v).trim();
+        if (s === '') return '';
+        const n = parseFloat(s.replace(/,/g, ''));
+        return isNaN(n) ? s : n;
+    }
+    function xlDate(v) {
+        const s = String(v === undefined || v === null ? '' : v).trim();
+        const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+        if (!m) return null;
+        let y = +m[3]; if (y < 100) y += 2000;
+        const d = new Date(y, +m[2] - 1, +m[1]);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    function xlNextRow(ws, c1, c2) {
+        let last = 1;
+        ws.eachRow({ includeEmpty: false }, (row, rn) => {
+            for (let c = c1; c <= c2; c++) {
+                const v = row.getCell(c).value;
+                if (v !== null && v !== undefined && v !== '') { if (rn > last) last = rn; break; }
+            }
+        });
+        return last + 1;
+    }
+    /* the exact rows the Copy buttons produce — nothing is re-invented here */
+    function xlData() {
+        const parse = t => (t.plain || '').replace(/\n+$/, '').split('\n').filter(l => l.length).map(l => l.split('\t'));
+        const inc = parse(buildIncoming()).filter(r => r[0] !== 'Date');
+        const log = parse(buildLog()).filter(r => r[0] !== 'Date');
+        return { inc: inc, log: log };
+    }
+    function xlPlan() {
+        const plan = $('xl-plan'), btn = $('xl-write-btn');
+        if (!xlBook) { if (plan) plan.innerHTML = ''; if (btn) btn.disabled = true; return; }
+        const d = xlData();
+        const wsIn = xlBook.getWorksheet($('xl-sheet-in').value.trim());
+        const wsGsm = xlBook.getWorksheet($('xl-sheet-gsm').value.trim());
+        let html = '<b>' + esc(xlName) + '</b><br>';
+        if (wsIn) {
+            const r0 = xlNextRow(wsIn, 1, 13);
+            html += '📥 Incoming Log → <b>' + esc(wsIn.name) + '</b> · columns A–M · row ' + r0 + (d.inc.length ? '–' + (r0 + d.inc.length - 1) : '') + ' (' + d.inc.length + ' row(s))<br>';
+            if (d.inc.length) html += '<span style="opacity:.75">' + esc(d.inc[0].join(' · ')) + '</span><br>';
+        } else html += '⚠ the sheet "' + esc($('xl-sheet-in').value) + '" was not found<br>';
+        if (wsGsm) {
+            const r0 = xlNextRow(wsGsm, 2, 13);
+            html += '📤 Excel Log → <b>' + esc(wsGsm.name) + '</b> · columns B–M · row ' + r0 + (d.log.length ? '–' + (r0 + d.log.length - 1) : '') + ' (' + d.log.length + ' row(s))<br>';
+            if (d.log.length) html += '<span style="opacity:.75">' + esc(d.log[0].join(' · ')) + '</span><br>';
+        } else html += '⚠ the sheet "' + esc($('xl-sheet-gsm').value) + '" was not found<br>';
+        if (plan) plan.innerHTML = html;
+        if (btn) btn.disabled = !(wsIn || wsGsm) || (!d.inc.length && !d.log.length);
+    }
+    async function xlOpen() {
+        try {
+            xlStatus('Opening the workbook…');
+            /* the file picker MUST be asked for inside the click (the browser wants the
+               user gesture) — so ask first, load the Excel engine while the user picks */
+            let pickPromise;
+            if (window.showOpenFilePicker) {
+                pickPromise = window.showOpenFilePicker({
+                    multiple: false,
+                    types: [{ description: 'Excel workbook', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
+                });
+            } else {
+                pickPromise = new Promise(res => {
+                    const i = document.createElement('input');
+                    i.type = 'file'; i.accept = '.xlsx';
+                    i.style.cssText = 'position:fixed;left:-9999px';
+                    i.onchange = () => { const f = i.files && i.files[0]; i.remove(); res(f || null); };
+                    document.body.appendChild(i);
+                    i.click();
+                });
+            }
+            pickPromise.catch(() => {});
+            const ExcelJS = await xlEngine();
+            const picked = await pickPromise;
+            if (!picked) { xlStatus(''); return; }
+            if (typeof picked.getFile === 'function') {          /* a real file handle */
+                xlHandle = picked; xlName = picked.name;
+                const f = await picked.getFile();
+                xlBook = await new ExcelJS.Workbook().xlsx.load(await f.arrayBuffer());
+            } else {                                             /* a plain File (phone) */
+                xlHandle = null; xlName = picked.name || 'workbook.xlsx';
+                xlBook = await new ExcelJS.Workbook().xlsx.load(await picked.arrayBuffer());
+            }
+            const note = $('xl-note');
+            if (note) note.textContent = xlHandle
+                ? '🔒 The file stays open on this device — the export writes into it directly, no download.'
+                : '📥 On this device the export gives you the updated file to download and replace the old one (use "Send the updated file" to open it in Excel / Drive).';
+            xlPlan();
+            xlStatus('✅ ' + xlName + ' is open — check the plan below, then press "Write into the file".');
+        } catch (e) {
+            if (e && e.name === 'AbortError') { xlStatus(''); return; }
+            xlStatus('ERROR: ' + e.message, 'bad');
+        }
+    }
+    async function xlWrite() {
+        if (!xlBook) { xlStatus('Open your Excel file first.', 'bad'); return; }
+        try {
+            xlStatus('Writing into the workbook…');
+            const ExcelJS = await xlEngine();
+            let book = xlBook;
+            if (xlHandle) {                                  /* re-read: never lose Excel's own edits */
+                const f = await xlHandle.getFile();
+                book = await new ExcelJS.Workbook().xlsx.load(await f.arrayBuffer());
+            }
+            const now = new Date();
+            book.created = (book.created instanceof Date && !isNaN(book.created)) ? book.created : now;
+            book.modified = now;
+            const d = xlData();
+            const nameIn = $('xl-sheet-in').value.trim(), nameGsm = $('xl-sheet-gsm').value.trim();
+            const wsIn = book.getWorksheet(nameIn), wsGsm = book.getWorksheet(nameGsm);
+            if (!wsIn && !wsGsm) throw new Error('neither sheet was found in this workbook');
+            const done = [];
+            if (wsIn && d.inc.length) {
+                let r = xlNextRow(wsIn, 1, 13);
+                const start = r;
+                d.inc.forEach(row => {
+                    for (let i = 0; i < 13; i++) {
+                        const cell = wsIn.getCell(r, 1 + i), src = wsIn.getCell(r - 1, 1 + i);
+                        if (src && src.style) cell.style = JSON.parse(JSON.stringify(src.style));
+                        const v = row[i] === undefined ? '' : row[i];
+                        if (i === 0) { const dd = xlDate(v); if (dd) { cell.value = dd; cell.numFmt = 'dd/mm/yyyy'; } else cell.value = v === '' ? null : v; }
+                        else if (i === 4 || i === 5) { const nv = xlNum(v); cell.value = (nv === '' ? null : nv); }
+                        else cell.value = v === '' ? null : v;
+                    }
+                    r++;
+                });
+                done.push('📥 ' + d.inc.length + ' row(s) → ' + nameIn + ' row ' + start);
+            }
+            if (wsGsm && d.log.length) {
+                let r = xlNextRow(wsGsm, 2, 13);
+                const start = r;
+                d.log.forEach(row => {
+                    for (let i = 0; i < 12; i++) {
+                        const cell = wsGsm.getCell(r, 2 + i), src = wsGsm.getCell(r - 1, 2 + i);
+                        if (src && src.style) cell.style = JSON.parse(JSON.stringify(src.style));
+                        const v = row[i] === undefined ? '' : row[i];
+                        if (i === 3 || (i >= 5 && i <= 10)) { const nv = xlNum(v); cell.value = (nv === '' ? null : nv); }
+                        else cell.value = v === '' ? null : v;
+                    }
+                    const ac = wsGsm.getCell(r, 13);
+                    const hasSamples = row.slice(5, 11).some(x => typeof xlNum(x) === 'number');
+                    if (hasSamples) {
+                        ac.value = { formula: 'AVERAGE(' + xlCol(2 + 5) + r + ':' + xlCol(2 + 10) + r + ')' };
+                        const nf = wsGsm.getCell(r - 1, 13).numFmt;
+                        if (nf) ac.numFmt = nf;
+                    } else ac.value = xlNum(row[11]);
+                    r++;
+                });
+                done.push('📤 ' + d.log.length + ' row(s) → ' + nameGsm + ' row ' + start);
+            }
+            const buf = await book.xlsx.writeBuffer();
+            xlBook = book; xlOut = buf;
+            if (xlHandle) {
+                const w = await xlHandle.createWritable();
+                await w.write(buf);
+                await w.close();
+                xlStatus('✅ ' + done.join(' · ') + ' — "' + xlName + '" was updated in place (no download).');
+            } else {
+                xlDownload();
+                xlStatus('✅ ' + done.join(' · ') + ' — the updated file is ready below.');
+            }
+            xlPlan();
+        } catch (e) {
+            xlStatus('ERROR: ' + e.message, 'bad');
+        }
+    }
+    function xlFile() {
+        return new File([xlOut], xlName || 'Daily incoming  RM & PM.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    }
+    function xlDownload() {
+        if (!xlOut) return;
+        const blob = new Blob([xlOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = xlName || 'workbook.xlsx';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+        const sb = $('xl-share-btn');
+        if (sb && navigator.canShare && navigator.canShare({ files: [xlFile()] })) sb.hidden = false;
+    }
+    async function xlShare() {
+        if (!xlOut) { xlStatus('Write into the file first.', 'bad'); return; }
+        const f = xlFile();
+        if (navigator.canShare && navigator.canShare({ files: [f] })) {
+            try { await navigator.share({ files: [f], title: xlName }); } catch (e) {}
+        } else xlDownload();
+    }
+
+    /* load the Excel engine in the background when this section comes into view */
+    if (window.IntersectionObserver && $('xl-section')) {
+        const io = new IntersectionObserver(es => {
+            if (es.some(e => e.isIntersecting)) { xlEngine().catch(() => {}); io.disconnect(); }
+        }, { rootMargin: '300px' });
+        io.observe($('xl-section'));
+    }
 
     // ---------- Cloud register (our Firebase · own path · never the soap-log doc) ----------
     const CLOUD_PATH = 'lab/incoming-pm-865b658190c198039dc1e173.json';

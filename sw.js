@@ -2,7 +2,7 @@
    App shell is cached so the app opens and works with no network.
    The cloud (Firebase) requests are NEVER cached: they are encrypted
    and must always come from the server. */
-const VERSION = 'ipm-v3';
+const VERSION = 'ipm-v4';
 const SHELL = [
   './',
   './index.html',
@@ -10,7 +10,8 @@ const SHELL = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png',
-  './icons/apple-touch-icon.png'
+  './icons/apple-touch-icon.png',
+  './vendor/exceljs.min.js'
 ];
 
 self.addEventListener('install', e => {
