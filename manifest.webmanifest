@@ -1,0 +1,24 @@
+{
+  "name": "IFFCO Egypt · Incoming PM",
+  "short_name": "Incoming PM",
+  "description": "Incoming Selection → Ready-to-send Approval Email. Offline-capable, syncs the incoming register to the encrypted cloud.",
+  "id": "/incoming-pm-pwa/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f9fc",
+  "theme_color": "#0f5a8a",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Incoming Log", "url": "./#inc-section" },
+    { "name": "Excel Log", "url": "./#log-section" }
+  ]
+}

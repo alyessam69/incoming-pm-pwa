@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>IFFCO Egypt · Incoming PM</title>
+<meta name="description" content="Incoming Selection → Ready-to-send Approval Email. Offline-capable PWA with encrypted cloud sync.">
+<meta name="theme-color" content="#0f5a8a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Incoming PM">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+    :root {
+        --bg:#f6f9fc; --panel:#fff; --ink:#1f2a44; --muted:#5c6786; --line:#d8e0eb;
+        --accent:#FF6B35; --blue:#0f5a8a; --blue-soft:#e6f2fb;
+        --ok:#2e7d32; --ok-soft:#e8f5e9; --bad:#c62828; --bad-soft:#fdecea; --warn:#d97706; --warn-soft:#fff4e5;
+        --shadow:0 4px 14px rgba(20,40,80,.06);
+        --field:#fff; --field2:#fcfdff; --blue-link:#0f5a8a; --item-on-border:#7bb6dc; --status-ink:#8a4b00;
+        color-scheme:light;
+    }
+    [data-theme="dark"] {
+        --bg:#0e1522; --panel:#18212f; --ink:#e6ebf4; --muted:#9aa7bf; --line:#32415a;
+        --blue:#2f86c4; --blue-soft:#1b3550; --blue-link:#7cc0f0; --item-on-border:#3c7fb0;
+        --ok:#6fcf74; --ok-soft:#173222; --bad:#ff7b72; --bad-soft:#3a1c1a; --warn:#f0a040; --warn-soft:#3a2a10; --status-ink:#f3c98a;
+        --field:#1f2a3b; --field2:#1b2535; --shadow:0 4px 14px rgba(0,0,0,.35);
+        color-scheme:dark;
+    }
+    [data-theme="dark"] header.banner { background:linear-gradient(135deg,#0b2f48 0%,#12476b 60%,#1a5f8c 100%); }
+    header.banner { position:relative; }
+    .theme-btn { position:absolute; top:12px; right:12px; background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.4); border-radius:20px; padding:6px 12px; font-size:13px; font-weight:600; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:'Segoe UI',Roboto,Arial,sans-serif; line-height:1.45; }
+    header.banner { background:linear-gradient(135deg,#0f5a8a 0%,#1e7fbf 60%,#3aa5e0 100%); color:#fff; padding:24px 18px 18px; text-align:center; }
+    header.banner h1 { margin:0 0 4px; font-size:22px; }
+    header.banner p { margin:0; opacity:.92; font-size:14px; }
+    header.banner .small { margin-top:6px; font-size:12px; opacity:.8; }
+    main { max-width:760px; margin:0 auto; padding:14px 12px 40px; }
+    .card { background:var(--panel); border-radius:12px; box-shadow:var(--shadow); padding:14px; margin-bottom:14px; border-top:3px solid var(--blue); }
+    .card h2 { margin:0 0 4px; font-size:16px; color:var(--blue-link); }
+    .card .sub { margin:0 0 10px; font-size:12.5px; color:var(--muted); }
+    .toolbar { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+    button { font:inherit; cursor:pointer; }
+    .btn { background:var(--field); border:1px solid var(--line); color:var(--blue-link); border-radius:8px; padding:7px 12px; font-size:13px; font-weight:600; }
+    .btn-main { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:12px; width:100%; font-size:15px; font-weight:700; }
+    .btn-main:disabled { opacity:.5; }
+
+    .item { display:flex; align-items:flex-start; gap:10px; padding:10px; border:1px solid var(--line); border-radius:10px; margin-bottom:6px; cursor:pointer; background:var(--field); }
+    .item.on { background:var(--blue-soft); border-color:var(--item-on-border); }
+    .item input { width:20px; height:20px; margin-top:1px; flex:none; accent-color:var(--blue); }
+    .item .nm { font-size:13.5px; font-weight:600; word-break:break-word; }
+    .del { margin-left:auto; flex:none; border:1px solid var(--line); background:var(--field); color:var(--bad); border-radius:8px; width:30px; height:30px; font-size:14px; line-height:1; }
+    .store-note { font-size:11.5px; color:var(--muted); margin-top:6px; }
+    .badge { display:inline-block; font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:20px; background:var(--warn-soft); color:var(--warn); margin-left:6px; vertical-align:middle; white-space:nowrap; }
+
+    .add-row { display:grid; grid-template-columns:1fr; gap:6px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); }
+    @media (min-width:520px){ .add-row { grid-template-columns:1fr 150px auto; } }
+    input[type=text], input[type=number], select { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px; font:inherit; font-size:14px; background:var(--field); color:var(--ink); }
+    label.lb { display:block; font-size:11.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .full { grid-column:1/-1; }
+
+    .gsm-card { border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:var(--field2); }
+    .gsm-card h3 { margin:0 0 10px; font-size:13.5px; word-break:break-word; }
+    .stepper { display:flex; align-items:center; gap:8px; }
+    .stepper button { width:36px; height:36px; border-radius:8px; border:1px solid var(--line); background:var(--field); font-size:20px; font-weight:700; color:var(--blue-link); line-height:1; }
+    .stepper .n { min-width:30px; text-align:center; font-size:17px; font-weight:700; }
+    .pallet-box { border:1px solid var(--line); border-radius:10px; padding:10px; margin-top:10px; background:var(--field); }
+    .pallet-box .pl { font-size:13px; font-weight:800; color:var(--blue-link); margin-bottom:8px; }
+    .res { font-size:15px; font-weight:700; padding:9px 0; color:var(--muted); }
+    .res.ok { color:var(--ok); } .res.bad { color:var(--bad); }
+
+    .chips { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 12px; }
+    .chip { border:1px solid var(--line); background:var(--field); border-radius:20px; padding:6px 12px; font-size:13px; font-weight:600; color:var(--ink); }
+    .chip.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .preview { background:#fff; color:#000; border:1px solid var(--line); border-radius:8px; padding:14px; overflow-x:auto; -webkit-overflow-scrolling:touch; font-family:Calibri,Arial,sans-serif; }
+    .preview .miss { color:#c62828; font-style:italic; }
+    .status { font-size:12.5px; margin:10px 0; }
+    .status div { padding:6px 10px; border-radius:8px; margin-bottom:4px; background:var(--warn-soft); color:var(--status-ink); }
+    .preview .empty { color:#5c6786; }
+    .sheet { background:#fff; color:#000; border:1px solid var(--line); border-radius:8px; padding:10px; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-top:10px; }
+    .chk { display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; margin-top:8px; cursor:pointer; }
+    .chk input { width:18px; height:18px; accent-color:var(--blue); }
+    .qrow { border:1px solid var(--line); border-radius:10px; padding:10px; margin-top:10px; background:var(--field); }
+    .qrow .qn { font-size:12.5px; font-weight:700; margin-bottom:6px; word-break:break-word; }
+    .empty { color:var(--muted); font-size:13px; text-align:center; padding:8px; }
+</style>
+</head>
+<body>
+
+<header class="banner">
+    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
+    <h1>📥 IFFCO Egypt · Incoming PM</h1>
+    <p>Incoming Selection → Ready-to-send Approval Email</p>
+    <div class="small">Powered by Chemist Ali Essam</div>
+</header>
+
+<main>
+
+    <section class="card">
+        <h2>1 · Incoming Selection</h2>
+        <p class="sub">Tap the materials received today. Wrapper / Stiffener get GSM tables.</p>
+        <div class="toolbar">
+            <button class="btn" onclick="selectAll(true)">Select all</button>
+            <button class="btn" onclick="selectAll(false)">Clear</button>
+        </div>
+        <div id="items"></div>
+
+        <div class="add-row">
+            <input type="text" id="add-name" placeholder="Add another item (name)…">
+            <select id="add-type">
+                <option value="">Other (no GSM)</option>
+                <option value="wrap">Wrapper (GSM table)</option>
+                <option value="stiff">Stiffener (GSM table)</option>
+            </select>
+            <button class="btn" onclick="addItem()">＋ Add</button>
+        </div>
+        <div class="store-note" id="store-note"></div>
+    </section>
+
+    <section class="card" id="gsm-section" style="display:none;">
+        <h2>2 · GSM Tables</h2>
+        <p class="sub">Each pallet has its own calculator (one row per pallet). The 6 values per row are generated within ±0.2 of that pallet GSM.</p>
+        <div id="gsm-cards"></div>
+    </section>
+
+    <section class="card" id="gen-section">
+        <h2>🎲 Generator</h2>
+        <p class="sub">Each GSM material has its own generator: type its number and get tables of 6 random values around it. Tick “Use in the email” to make them the tables of that material.</p>
+        <div id="gen-blocks"></div>
+    </section>
+
+    <section class="card">
+        <h2><span id="step-num">2</span> · Email</h2>
+        <div class="toolbar">
+            <button class="btn" onclick="regenerate()">🎲 Regenerate numbers</button>
+        </div>
+        <label class="lb">Size</label>
+        <div class="chips" id="chips"></div>
+        <div class="status" id="status"></div>
+        <button class="btn-main" id="copy-btn" onclick="copyEmail()" style="margin-bottom:10px;">📋 Copy Email</button>
+        <div class="preview" id="preview"></div>
+    </section>
+
+    <section class="card" id="inc-section" style="display:none;">
+        <h2>4 · Incoming Log</h2>
+        <p class="sub">One row per incoming material, same columns as your Incoming sheet. Unit = KG for GSM materials, PC for everything else. Decision = Approved.</p>
+        <div class="grid2">
+            <div><label class="lb">Date</label><input type="date" id="log-date" oninput="PM.log('date', this.value)"></div>
+            <div><label class="lb">Shift</label>
+                <select id="log-shift" onchange="PM.log('shift', this.value)"><option>A</option><option>B</option><option>C</option></select></div>
+        </div>
+        <div id="inc-items"></div>
+        <label class="chk"><input type="checkbox" id="inc-header" onchange="PM.incHeader(this.checked)"> Include header row</label>
+        <div class="status" id="inc-note"></div>
+        <button class="btn-main" id="inc-copy" onclick="copyIncoming()" style="margin-top:6px;">📋 Copy for Excel</button>
+        <div class="sheet" id="inc-preview"></div>
+    </section>
+
+    <section class="card" id="log-section" style="display:none;">
+        <h2>5 · Excel Log</h2>
+        <p class="sub">Same layout as your register sheet (Date · shift · RM Name · Quantity · UNIT (KG) · 6 samples · AVERG). Uses the date and shift from the Incoming Log above. Copy it and paste it at the next free row.</p>
+        <div id="log-qty"></div>
+        <label class="chk"><input type="checkbox" id="log-avg" checked onchange="PM.log('avg', this.checked)"> Include AVERG GSM column</label>
+        <label class="chk"><input type="checkbox" id="log-header" onchange="PM.log('header', this.checked)"> Include header row</label>
+        <button class="btn-main" id="log-copy" onclick="copyLog()" style="margin-top:12px;">📋 Copy for Excel</button>
+        <div class="sheet" id="log-preview"></div>
+    </section>
+
+    <section class="card" id="cloud-section">
+        <h2>☁️ Cloud Register</h2>
+        <p class="sub">The Incoming Log rows are kept in our encrypted cloud so every phone shows the same register. This app has its own cloud path — it never touches the Soap Bar Daily Log document.</p>
+        <div class="toolbar">
+            <button class="btn" onclick="PM.cloudPull()">⬇️ Pull from cloud</button>
+            <button class="btn" onclick="PM.cloudPush()">☁️ Save to cloud</button>
+            <button class="btn" onclick="PM.cloudSync()">⟳ Sync both</button>
+            <button class="btn" onclick="PM.cloudClearLocal()">🗑 Clear this device</button>
+        </div>
+        <div class="status" id="cloud-status"></div>
+        <div class="toolbar">
+            <button class="btn-main" onclick="PM.cloudSaveNow()">＋ Save the current Incoming Log into the register</button>
+        </div>
+        <div class="sheet" id="cloud-rows"></div>
+        <div class="store-note" id="cloud-note"></div>
+    </section>
+
+</main>
+
+<script>
+(function () {
+    // ---------- Specs (same rules as PM Check) ----------
+    const SPECS = {
+        wrap: {
+            savannah_spot:  { width:140, repeat:162, lsl:102.3, usl:117.7, target:110 },
+            savannah_avg:   { width:140, repeat:162, lsl:104.5, usl:115.5, target:110 },
+            savannah_moment:{ width:140, repeat:162, lsl:90,    usl:100,   target:95  },
+            ivyjini_spot:   { width:136, repeat:160, lsl:90,    usl:100,   target:95  },
+            ivyjini_avg:    { width:136, repeat:160, lsl:104.5, usl:115.5, target:110 }
+        },
+        stiff: {
+            savannah:  { width:95,  repeat:146,  lsl:121.5, usl:131.25, target:125 },
+            ivyjini:   { width:93,  repeat:null, lsl:123.5, usl:136.5,  target:130 },
+            custom103: { width:103, repeat:null, lsl:null,  usl:null,   target:130 }
+        }
+    };
+    const VARIANTS = {
+        wrap: [
+            ['savannah_spot','Savannah — Target on Spot ±7% (W140 × RL162)'],
+            ['savannah_avg','Savannah — Target on Average ±5% (W140 × RL162)'],
+            ['savannah_moment','Savannah Moment (W140 × RL162)'],
+            ['ivyjini_spot','IVY & Jini — Target (W136 × RL160)'],
+            ['ivyjini_avg','IVY & Jini — Target on Average ±5% (W136 × RL160)']
+        ],
+        stiff: [
+            ['savannah','Savannah (W95 × RL146)'],
+            ['ivyjini','IVY & Jini (W93 ±1)'],
+            ['custom103','Stiffener 103 mm — 130 GSM (enter repeat)']
+        ]
+    };
+
+    // ---------- Today's incoming list (from the Word file) ----------
+    // gsm: 'wrap' | 'stiff' | null  → items with a type get a GSM table.
+    const ITEMS = [
+        { id:1, name:'WRAPPER SOAP SAVNH CLASSIC',                gsm:'wrap',  variant:'savannah_spot' },
+        { id:2, name:'DUP(200000002925)PAPER STIFFENER ANTIMOL',  gsm:'stiff', variant:'savannah' },
+        { id:3, name:'REVAMP UNIT CARTON RL PREMIUMGOLD 110G',    gsm:null },
+        { id:4, name:'BOPP OVERWRAP 186MM_CLASSIC_PRINTED',       gsm:null },
+        { id:5, name:'RSC CARTON SAVANNAH CLASSICSOAP 48X110G',   gsm:null },
+        { id:6, name:'STIFFENER_PAPER ANTIMOLD_103MM_130GSM',     gsm:'stiff', variant:'custom103' },
+        { id:7, name:'RSC CARTON ROYAL LATHER 48X110G',           gsm:null }
+    ];
+    const SIZES = [20,25,35,40,50,65,75,80,100];
+    const SPREAD = 0.2, PER_ROW = 6, MAX_PALLETS = 10;
+
+    let sizePct = 100;
+    let nextId = 8;
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // Each pallet has its OWN calculator (rule set, width, repeat, weight, generated row).
+    function newPallet(it) {
+        return { variant: it.variant, width: '', repeat: '', weight: '', row: null };
+    }
+    function initItem(it) {
+        it.sel = false;
+        it.pals = it.gsm ? [newPallet(it)] : [];
+    }
+    ITEMS.forEach(initItem);
+
+    // ---------- GSM logic ----------
+    // Width / Repeat: what was typed, otherwise the nominal value of the selected rule set.
+    function dims(it, p) {
+        const pl = it.pals[p], sp = SPECS[it.gsm][pl.variant];
+        const tw = parseFloat(pl.width), tr = parseFloat(pl.repeat);
+        const w = isFinite(tw) ? tw : sp.width;
+        const r = isFinite(tr) ? tr : (sp.repeat === null ? NaN : sp.repeat);
+        return { w, r, nominal: !isFinite(tw) || !isFinite(tr) };
+    }
+    function gsmOf(it, p) {
+        const pl = it.pals[p];
+        const d = dims(it, p);
+        const wt = parseFloat(pl.weight), w = d.w, r = d.r;
+        if (![wt, w, r].every(isFinite) || wt <= 0 || w <= 0 || r <= 0) return null;
+        return (wt * 10000) / (w * r);          // same formula as PM Check
+    }
+    function inSpec(it, p, gsm) {
+        const sp = SPECS[it.gsm][it.pals[p].variant];
+        if (sp.lsl === null) return null;
+        return gsm >= sp.lsl && gsm <= sp.usl;
+    }
+    function genRow(mean) {
+        const row = [];
+        for (let i = 0; i < PER_ROW; i++) row.push(mean + (Math.random() * 2 - 1) * SPREAD);
+        return row;
+    }
+    function regenRow(it, p) {
+        const g = gsmOf(it, p);
+        it.pals[p].row = g === null ? null : genRow(g);
+    }
+    function regenItem(it) { for (let p = 0; p < it.pals.length; p++) regenRow(it, p); }
+
+    // ---------- Rendering: item list ----------
+    function renderItems() {
+        $('items').innerHTML = ITEMS.map((it, i) => `
+            <label class="item ${it.sel ? 'on' : ''}">
+                <input type="checkbox" ${it.sel ? 'checked' : ''} onchange="PM.toggle(${it.id}, this.checked)">
+                <div class="nm">${i + 1}- ${esc(it.name)}${it.gsm ? '<span class="badge">GSM table</span>' : ''}</div>
+                ${it.custom ? `<button class="del" title="Remove" onclick="event.preventDefault();event.stopPropagation();PM.remove(${it.id})">✕</button>` : ''}
+            </label>`).join('');
+    }
+
+    // ---------- Rendering: GSM cards ----------
+    function renderCards() {
+        const sel = ITEMS.filter(it => it.sel && it.gsm);
+        $('gsm-section').style.display = sel.length ? '' : 'none';
+        $('step-num').textContent = sel.length ? '3' : '2';
+        $('gsm-cards').innerHTML = sel.map(it => {
+            let pallets = '';
+            it.pals.forEach((pl, p) => {
+                const opts = VARIANTS[it.gsm].map(([v, l]) => `<option value="${v}" ${v === pl.variant ? 'selected' : ''}>${esc(l)}</option>`).join('');
+                pallets += `
+                <div class="pallet-box">
+                    <div class="pl">Pallet ${p + 1}</div>
+                    <div class="grid2">
+                        <div class="full"><label class="lb">Product / Rule Set</label>
+                            <select onchange="PM.variant(${it.id}, ${p}, this.value)">${opts}</select></div>
+                        <div><label class="lb">Width (mm)</label>
+                            <input type="number" step="any" inputmode="decimal" value="${esc(pl.width)}" placeholder="${SPECS[it.gsm][pl.variant].width}" oninput="PM.dim(${it.id}, ${p}, 'width', this.value)"></div>
+                        <div><label class="lb">Repeat length (mm)</label>
+                            <input type="number" step="any" inputmode="decimal" value="${esc(pl.repeat)}" placeholder="${SPECS[it.gsm][pl.variant].repeat === null ? 'enter' : SPECS[it.gsm][pl.variant].repeat}" oninput="PM.dim(${it.id}, ${p}, 'repeat', this.value)"></div>
+                        <div><label class="lb">Weight (g)</label>
+                            <input type="number" step="0.01" inputmode="decimal" placeholder="e.g. 2.55" value="${esc(pl.weight)}" oninput="PM.weight(${it.id}, ${p}, this.value)"></div>
+                        <div><label class="lb">GSM</label>
+                            <div class="res" id="g-${it.id}-${p}">—</div></div>
+                    </div>
+                </div>`;
+            });
+            return `
+            <div class="gsm-card">
+                <h3>${esc(it.name)}</h3>
+                ${genRowsOf(it) ? `<div class="status"><div>🎲 Using Generator tables (${genRowsOf(it).length}) in the email — the weights below are ignored. <button class="btn" onclick="PM.genUse(${it.id}, false)">Switch off</button></div></div>` : ''}
+                <label class="lb">Pallets (a separate calculator for each)</label>
+                <div class="stepper">
+                    <button onclick="PM.pallets(${it.id}, -1)">−</button>
+                    <div class="n">${it.pals.length}</div>
+                    <button onclick="PM.pallets(${it.id}, 1)">＋</button>
+                </div>
+                ${pallets}
+            </div>`;
+        }).join('');
+        sel.forEach(it => { for (let p = 0; p < it.pals.length; p++) updateRes(it, p); });
+    }
+    function updateRes(it, p) {
+        const el = $(`g-${it.id}-${p}`);
+        if (!el) return;
+        const g = gsmOf(it, p);
+        if (g === null) { el.textContent = '—'; el.className = 'res'; return; }
+        const ok = inSpec(it, p, g);
+        el.textContent = g.toFixed(2) + (ok === null ? '' : ok ? ' ✓' : ' ✗') + (dims(it, p).nominal ? ' · nominal size' : '');
+        el.className = 'res' + (ok === null ? '' : ok ? ' ok' : ' bad');
+    }
+
+    // ---------- Email builder ----------
+    function buildEmail(forPreview) {
+        const s = sizePct / 100;
+        const fs = (15 * s).toFixed(2);
+        const padV = (5 * s).toFixed(2), padH = (10 * s).toFixed(2);
+        const gap = Math.max(1, Math.round(6 * s));
+        const cell = `border:1px solid #000;padding:${padV}px ${padH}px;text-align:center;font-family:Calibri,Arial,sans-serif;font-size:${fs}px;`;
+        const sel = ITEMS.filter(it => it.sel);
+        const warnings = [];
+        const GREEN = '<span style="color:#00B050;">Approved</span>';
+        const bold = t => `<b style="color:#000000;font-weight:bold;">${esc(t)}</b>`;
+
+        // tables for one material (one table per pallet)
+        function tablesFor(it) {
+            const gr = genRowsOf(it);
+            if (gr) return { h: emailTables(gr), pl: gr.map(r => r.map(v => v.toFixed(2)).join('\t')).join('\n') + '\n' };
+            if (it.gen && it.gen.use) warnings.push(`${it.name}: Generator is on — type its value`);
+            let h = '', pl = '', any = false;
+            it.pals.forEach((pal, p) => {
+                if (!pal.row) {
+                    warnings.push(`${it.name} — Pallet ${p + 1}: enter the weight`);
+                    if (forPreview) h += `<div class="miss" style="font-size:${fs}px;">Pallet ${p + 1}: enter weight…</div>`;
+                    return;
+                }
+                const g = gsmOf(it, p);
+                if (inSpec(it, p, g) === false) warnings.push(`${it.name} — Pallet ${p + 1}: GSM ${g.toFixed(2)} is OUT OF SPEC`);
+                if (any) h += `<div style="height:${gap}px;line-height:${gap}px;font-size:1px;">&nbsp;</div>`;
+                h += `<table style="border-collapse:collapse;border:1px solid #000;"><tr>` +
+                     pal.row.map(v => `<td style="${cell}">${v.toFixed(2)}</td>`).join('') + `</tr></table>`;
+                pl += pal.row.map(v => v.toFixed(2)).join('\t') + '\n';
+                any = true;
+            });
+            return { h, pl };
+        }
+
+        let html = `<div style="font-family:Calibri,Arial,sans-serif;font-size:${fs}px;color:#000;">Dear Teams,<br><br>`;
+        let plain = 'Dear Teams,\n\n';
+
+        if (sel.length === 1) {
+            const it = sel[0];
+            if (it.gsm) {
+                const t = tablesFor(it);
+                html += `${bold(it.name)} is ${GREEN} from Quality Side with GSM<br><br>${t.h}<br>`;
+                plain += `${it.name} is Approved from Quality Side with GSM\n\n${t.pl}\n`;
+            } else {
+                html += `${bold(it.name)} is ${GREEN} from Quality Side.<br><br>`;
+                plain += `${it.name} is Approved from Quality Side.\n\n`;
+            }
+        } else if (sel.length > 1) {
+            html += `All incoming Materials are ${GREEN} from Quality Side.<br><br>`;
+            plain += 'All incoming Materials are Approved from Quality Side.\n\n';
+            // only materials with a GSM table are listed; the rest are covered by the line above
+            sel.filter(it => it.gsm).forEach(it => {
+                const t = tablesFor(it);
+                html += `${bold(it.name)} is ${GREEN} with GSM<br><br>${t.h}<br>`;
+                plain += `${it.name} is Approved with GSM\n\n${t.pl}\n`;
+            });
+        }
+
+        html += `BR,</div>`;
+        plain += 'BR,';
+        return { html, plain, warnings, count: sel.length };
+    }
+
+    function renderPreview() {
+        const out = buildEmail(true);
+        $('preview').innerHTML = out.count ? out.html : '<div class="empty">Select the incoming materials above to build the email.</div>';
+        $('status').innerHTML = out.warnings.map(w => `<div>⚠ ${esc(w)}</div>`).join('');
+        $('copy-btn').disabled = !out.count;
+        renderLogPreview();
+        renderIncPreview();
+    }
+
+    // ---------- Size chips ----------
+    function renderChips() {
+        $('chips').innerHTML = SIZES.map(v =>
+            `<button class="chip ${v === sizePct ? 'on' : ''}" onclick="PM.size(${v})">${v}%</button>`).join('');
+    }
+
+    // ---------- Copy (rich HTML + legacy fallback) ----------
+    function clipCopy(html, plain, btn, label) {
+        const done = ok => {
+            btn.textContent = ok ? '✓ Copied!' : '⚠ Copy failed — press and hold the preview to copy';
+            setTimeout(() => { btn.textContent = label; }, 2200);
+        };
+        const legacy = () => {
+            const h = document.createElement('div');
+            h.contentEditable = 'true';
+            h.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+            h.innerHTML = html;
+            document.body.appendChild(h);
+            const r = document.createRange(); r.selectNodeContents(h);
+            const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(r);
+            let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+            sl.removeAllRanges(); document.body.removeChild(h);
+            return ok;
+        };
+        if (navigator.clipboard && window.ClipboardItem) {
+            const item = new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([plain], { type: 'text/plain' })
+            });
+            navigator.clipboard.write([item]).then(() => done(true)).catch(() => done(legacy()));
+        } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(plain).then(() => done(true)).catch(() => done(legacy()));
+        } else done(legacy());
+    }
+    function copyEmail() {
+        const out = buildEmail(false);
+        clipCopy(out.html, out.plain, $('copy-btn'), '📋 Copy Email');
+    }
+
+    // ---------- Excel log table (same layout/format as the register sheet) ----------
+    const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const log = { date: todayISO(), shift: 'B', header: false, avg: true };
+    try { const sh = localStorage.getItem('ipm-shift'); if (sh) log.shift = sh; } catch (e) {}
+    function todayISO() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function excelSerial(iso) {
+        const [y, m, d] = iso.split('-').map(Number);
+        return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000);
+    }
+    function dateText(iso) { const [y, m, d] = iso.split('-'); return d + '/' + m + '/' + y; }   // DD/MM/YYYY
+
+    function buildLog() {
+        const thin = '.5pt solid #000', med = '1.5pt solid #000';
+        const base = "font-family:'Times New Roman',serif;color:#000;text-align:center;vertical-align:middle;white-space:nowrap;padding:1px 6px;";
+        const nCols = 11 + (log.avg ? 1 : 0);          // B..L (+ M)
+        const cell = (content, o = {}) =>
+            `<td ${o.attrs || ''} style="${base}font-size:${o.fs || 10}pt;${o.fill ? 'background:' + o.fill + ';' : ''}` +
+            `border-left:${o.l || thin};border-right:${o.r || thin};border-top:${o.t || thin};border-bottom:${o.b || thin};${o.extra || ''}">${content}</td>`;
+
+        let html = '', plain = '', rowCount = 0;
+
+        if (log.header) {
+            const labels = ['Date', 'shift', 'RM Name', 'Quantity', 'UNIT', 'Sample 1 GSM', 'Sample 2 GSM', 'Sample 3 GSM', 'Sample 4 GSM', 'Sample 5 GSM', 'Sample 6 GSM'];
+            if (log.avg) labels.push('AVERG GSM');
+            html += '<tr>' + labels.map((t, i) => cell(t, {
+                fill: '#F4B183', t: med,
+                l: i === 0 ? med : thin, r: i === nCols - 1 ? med : thin
+            })).join('') + '</tr>';
+            plain += labels.join('\t') + '\n';
+        }
+
+        ITEMS.filter(it => it.sel && it.gsm).forEach(it => {
+            const rows = genRowsOf(it) || it.pals.map(pl => pl.row).filter(Boolean);
+            rows.forEach((row, k) => {
+                const vals = row.map(v => +v.toFixed(2));
+                const avg = (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+                let tr = '<tr>';
+                if (k === 0) {
+                    const span = rows.length > 1 ? ` rowspan="${rows.length}"` : '';
+                    tr += cell(esc(dateText(log.date)), { attrs: span + ` x:num="${excelSerial(log.date)}"`, fill: '#fff', l: med, fs: 14, extra: "mso-number-format:'dd\\/mm\\/yyyy';" });
+                    tr += cell(esc(log.shift), { attrs: span, fill: '#fff', fs: 14 });
+                    tr += cell(esc(it.name), { attrs: span, fill: '#fff', fs: 14 });
+                    tr += cell(esc(it.logQty || it.qty || ''), { attrs: span, fs: 14 });
+                    tr += cell('KG', { attrs: span, fs: 14 });
+                }
+                vals.forEach((v, i) => {
+                    tr += cell(String(v), { fs: 11, r: (!log.avg && i === 5) ? med : thin });
+                });
+                if (log.avg) tr += cell(avg, { fs: 11, fill: '#fff', r: med, extra: "mso-number-format:'0\\.00';" });
+                html += tr + '</tr>';
+                const lead = k === 0 ? [dateText(log.date), log.shift, it.name, it.logQty || it.qty || '', 'KG'] : ['', '', '', '', ''];
+                plain += lead.concat(vals.map(String), log.avg ? [avg] : []).join('\t') + '\n';
+                rowCount++;
+            });
+        });
+        return { html: `<table style="border-collapse:collapse;">${html}</table>`, plain: plain.replace(/\n$/, ''), rowCount };
+    }
+
+    function renderLog() {
+        const sel = ITEMS.filter(it => it.sel && it.gsm);
+        $('log-section').style.display = sel.length ? '' : 'none';
+        $('log-date').value = log.date;
+        $('log-shift').value = log.shift;
+        $('log-avg').checked = log.avg;
+        $('log-header').checked = log.header;
+        $('log-qty').innerHTML = sel.map(it => `
+            <div class="qrow">
+                <div class="qn">${esc(it.name)}</div>
+                <div>
+                    <div><label class="lb">Quantity (KG)</label>
+                        <input type="number" step="any" inputmode="decimal" value="${esc(it.logQty || '')}" placeholder="${esc(it.qty || 'same as Incoming Log')}" oninput="PM.logItem(${it.id}, 'logQty', this.value)"></div>
+                </div>
+            </div>`).join('');
+    }
+    function renderLogPreview() {
+        const out = buildLog();
+        $('log-preview').innerHTML = out.rowCount ? out.html : '<div class="empty" style="color:#5c6786;">Enter the weight of each pallet to fill the table.</div>';
+        $('log-copy').disabled = !out.rowCount;
+    }
+    function copyLog() {
+        const out = buildLog();
+        const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><body>' + out.html + '</body></html>';
+        clipCopy(html, out.plain, $('log-copy'), '📋 Copy for Excel');
+    }
+
+
+    // ---------- Incoming log (register of every incoming sample) ----------
+    const TRADERS_BASE = ['RIOPACK', 'FinePac', 'NEW PRESSDAN FOR PRINTING', 'UNIVERSAL COMPANY FOR PACKING MATERIALS', 'ELSHOROUK ALHADITHA', 'AL-ADAWY FACTORY FOR PLASTICS'];
+    let traderExtra = [], traderMap = {};
+    try {
+        traderExtra = JSON.parse(localStorage.getItem('ipm-traders') || '[]');
+        traderMap = JSON.parse(localStorage.getItem('ipm-trader-map') || '{}');
+    } catch (e) {}
+    const traders = () => TRADERS_BASE.concat(traderExtra.filter(t => !TRADERS_BASE.includes(t)));
+    function persist(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    const inc = { header: false };
+
+    const XL_THIN = '.5pt solid #000', XL_MED = '1.5pt solid #000';
+    function xlCell(content, o = {}) {
+        return `<td ${o.attrs || ''} style="font-family:'Times New Roman',serif;font-size:${o.fs || 10}pt;${o.bold ? 'font-weight:bold;' : ''}color:#000;text-align:center;vertical-align:middle;white-space:nowrap;padding:1px 6px;height:18.75pt;` +
+            `${o.fill ? 'background:' + o.fill + ';' : ''}border-left:${o.l || XL_THIN};border-right:${o.r || XL_THIN};border-top:${o.t || XL_THIN};border-bottom:${o.b || XL_THIN};${o.extra || ''}">${content}</td>`;
+    }
+
+    function buildIncoming() {
+        const sel = ITEMS.filter(it => it.sel);
+        const heads = ['Date', 'Shift', 'RM Name', 'Unit', 'Quantity', 'Truck', 'Trader Name', 'Manufacture Name', 'Batch No', 'Expiry Date', 'Decision', 'Sap Status', 'Comment'];
+        let html = '', plain = '';
+        if (inc.header) {
+            html += '<tr>' + heads.map((h, i) => xlCell(h, {
+                bold: true, fill: '#F4B183', fs: i >= 8 ? 14 : 10, t: XL_MED,
+                l: i === 0 ? XL_MED : XL_THIN, r: i === heads.length - 1 ? XL_MED : XL_THIN
+            })).join('') + '</tr>';
+            plain += heads.join('\t') + '\n';
+        }
+        sel.forEach(it => {
+            const unit = it.gsm ? 'KG' : 'PC';
+            const truck = String(it.truck || '').trim();
+            const truckFmt = truck && !/^\d+(\.\d+)?$/.test(truck) ? "mso-number-format:'\\@';" : '';
+            const tr = it.trader || '';
+            html += '<tr>' + [
+                xlCell(esc(dateText(log.date)), { attrs: ` x:num="${excelSerial(log.date)}"`, fill: '#fff', l: XL_MED, fs: 14, extra: "mso-number-format:'dd\\/mm\\/yyyy';" }),
+                xlCell(esc(log.shift), { fs: 14 }),
+                xlCell(esc(it.name), { fill: '#fff', fs: 14 }),
+                xlCell(unit, { fill: '#fff', fs: 14 }),
+                xlCell(esc(it.qty || ''), { fill: '#fff', fs: 14 }),
+                xlCell(esc(truck), { fill: '#fff', fs: 14, extra: truckFmt }),
+                xlCell(esc(tr), { fs: 14 }),
+                xlCell(esc(tr), { fs: 14 }),
+                xlCell('', { fs: 14, extra: "mso-number-format:'\\@';" }),
+                xlCell('', { fs: 14 }),
+                xlCell('Approved', { fs: 14 }),
+                xlCell('', { fs: 14 }),
+                xlCell('', { fs: 14, r: XL_MED })
+            ].join('') + '</tr>';
+            plain += [dateText(log.date), log.shift, it.name, unit, it.qty || '', truck, tr, tr, '', '', 'Approved', '', ''].join('\t') + '\n';
+        });
+        return { html: `<table style="border-collapse:collapse;">${html}</table>`, plain: plain.replace(/\n$/, ''), rowCount: sel.length };
+    }
+
+    function renderIncoming() {
+        const sel = ITEMS.filter(it => it.sel);
+        $('inc-section').style.display = sel.length ? '' : 'none';
+        $('log-date').value = log.date;
+        $('log-shift').value = log.shift;
+        $('inc-header').checked = inc.header;
+        $('inc-items').innerHTML = sel.map(it => {
+            const unit = it.gsm ? 'KG' : 'PC';
+            const opts = '<option value="">— choose trader —</option>' +
+                traders().map(t => `<option value="${esc(t)}" ${(!it.addingTrader && it.trader === t) ? 'selected' : ''}>${esc(t)}</option>`).join('') +
+                `<option value="__new" ${it.addingTrader ? 'selected' : ''}>＋ New trader…</option>`;
+            return `
+            <div class="qrow">
+                <div class="qn">${esc(it.name)} <span class="badge">${unit}</span></div>
+                <div class="grid2">
+                    <div><label class="lb">Quantity (${unit})</label>
+                        <input type="number" step="any" inputmode="decimal" value="${esc(it.qty || '')}" oninput="PM.inc(${it.id}, 'qty', this.value)"></div>
+                    <div><label class="lb">Truck</label>
+                        <input type="text" value="${esc(it.truck || '')}" placeholder="e.g. 6217" oninput="PM.inc(${it.id}, 'truck', this.value)"></div>
+                    <div class="full"><label class="lb">Trader = Manufacturer</label>
+                        <select onchange="PM.trader(${it.id}, this.value)">${opts}</select>
+                        ${it.addingTrader ? `<input type="text" style="margin-top:6px;" placeholder="New trader name" value="${esc(it.trader || '')}" oninput="PM.newTrader(${it.id}, this.value)" onchange="PM.saveTrader(${it.id})">` : ''}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    function renderIncPreview() {
+        const out = buildIncoming();
+        $('inc-preview').innerHTML = out.rowCount ? out.html : '<div class="empty" style="color:#5c6786;">Select the incoming materials above.</div>';
+        $('inc-copy').disabled = !out.rowCount;
+        const miss = ITEMS.filter(it => it.sel && !it.trader).map(it => it.name);
+        $('inc-note').innerHTML = miss.length ? `<div>⚠ Choose the trader for: ${esc(miss.join(' · '))}</div>` : '';
+    }
+    function copyIncoming() {
+        const out = buildIncoming();
+        const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><body>' + out.html + '</body></html>';
+        clipCopy(html, out.plain, $('inc-copy'), '📋 Copy for Excel');
+    }
+
+
+    // ---------- Generator (one per GSM material + a free one) ----------
+    const GEN_SPREADS = [0.1, 0.2, 0.3, 0.5, 1];
+    const newGen = () => ({ value: '', spread: 0.2, tables: 1, rows: [], use: false });
+    const freeGen = newGen();
+    const GEN = key => key === 'free' ? freeGen : (find(+key).gen || (find(+key).gen = newGen()));
+    // Tables the email / Excel log should use for this material (null = use the calculator)
+    function genRowsOf(it) { return it.gen && it.gen.use && it.gen.rows.length ? it.gen.rows : null; }
+
+    function emailTables(rows) {
+        const s = sizePct / 100, fs = (15 * s).toFixed(2), padV = (5 * s).toFixed(2), padH = (10 * s).toFixed(2);
+        const gap = Math.max(1, Math.round(6 * s));
+        const cell = `border:1px solid #000;padding:${padV}px ${padH}px;text-align:center;font-family:Calibri,Arial,sans-serif;font-size:${fs}px;`;
+        return rows.map((row, i) =>
+            (i ? `<div style="height:${gap}px;line-height:${gap}px;font-size:1px;">&nbsp;</div>` : '') +
+            `<table style="border-collapse:collapse;border:1px solid #000;"><tr>` +
+            row.map(v => `<td style="${cell}">${v.toFixed(2)}</td>`).join('') + `</tr></table>`
+        ).join('');
+    }
+    function genBuild(g) {
+        const v = parseFloat(g.value);
+        g.rows = !isFinite(v) ? [] : Array.from({ length: g.tables }, () =>
+            Array.from({ length: PER_ROW }, () => +(v + (Math.random() * 2 - 1) * g.spread).toFixed(2)));
+    }
+    const genPreviewHtml = g => g.rows.length ? emailTables(g.rows) : '<div class="empty" style="color:#5c6786;">Type a value to generate the tables.</div>';
+
+    function renderGen() {
+        const list = ITEMS.filter(it => it.sel && it.gsm);
+        const blocks = list.length ? list.map(it => ({ key: it.id, title: it.name, item: it })) : [{ key: 'free', title: 'Free generator', item: null }];
+        $('gen-blocks').innerHTML = blocks.map(b => {
+            const g = GEN(b.key);
+            return `
+            <div class="gsm-card">
+                <h3>${esc(b.title)}</h3>
+                <div class="grid2">
+                    <div><label class="lb">Value</label>
+                        <input type="number" step="any" inputmode="decimal" placeholder="e.g. 110" value="${esc(g.value)}" oninput="PM.gen('${b.key}', this.value)"></div>
+                    <div><label class="lb">Tables (pallets)</label>
+                        <div class="stepper">
+                            <button onclick="PM.genTables('${b.key}', -1)">−</button>
+                            <div class="n">${g.tables}</div>
+                            <button onclick="PM.genTables('${b.key}', 1)">＋</button>
+                        </div></div>
+                </div>
+                <label class="lb" style="margin-top:10px;">Range ±</label>
+                <div class="chips">${GEN_SPREADS.map(v => `<button class="chip ${v === g.spread ? 'on' : ''}" onclick="PM.genSpread('${b.key}', ${v})">± ${v}</button>`).join('')}</div>
+                <div class="toolbar">
+                    <button class="btn" onclick="PM.genRegen('${b.key}')">🎲 Generate</button>
+                    <button class="btn" id="gc-${b.key}" ${g.rows.length ? '' : 'disabled'} onclick="copyGen('${b.key}')">📋 Copy tables</button>
+                </div>
+                <div class="sheet" id="gp-${b.key}">${genPreviewHtml(g)}</div>
+                ${b.item ? `<label class="chk"><input type="checkbox" ${g.use ? 'checked' : ''} onchange="PM.genUse(${b.item.id}, this.checked)"> Use in the email &amp; Excel Log for this material</label>` : ''}
+            </div>`;
+        }).join('');
+    }
+    // typing in a value box: refresh only that block's preview (keeps keyboard focus)
+    function genTyped(key) {
+        const g = GEN(key);
+        $('gp-' + key).innerHTML = genPreviewHtml(g);
+        $('gc-' + key).disabled = !g.rows.length;
+        if (key !== 'free') renderPreview();
+    }
+    function copyGen(key) {
+        const g = GEN(key);
+        const html = `<div style="font-family:Calibri,Arial,sans-serif;">${emailTables(g.rows)}</div>`;
+        const plain = g.rows.map(r => r.map(v => v.toFixed(2)).join('\t')).join('\n');
+        clipCopy(html, plain, $('gc-' + key), '📋 Copy tables');
+    }
+
+    // ---------- Actions ----------
+    const find = id => ITEMS.find(x => x.id === id);
+    function refresh() { renderItems(); renderCards(); renderIncoming(); renderLog(); renderGen(); renderPreview(); }
+
+    window.PM = {
+        toggle(id, on) {
+            const it = find(id); it.sel = on;
+            if (on && !it.trader && traderMap[it.name]) it.trader = traderMap[it.name];
+            refresh();
+        },
+        weight(id, p, v) {
+            const it = find(id); it.pals[p].weight = v;
+            regenRow(it, p); updateRes(it, p); renderPreview();
+        },
+        dim(id, p, k, v) {
+            const it = find(id); it.pals[p][k] = v;
+            regenRow(it, p); updateRes(it, p); renderPreview();
+        },
+        variant(id, p, v) {
+            const it = find(id), pl = it.pals[p];
+            pl.variant = v;
+            regenRow(it, p); renderCards(); renderPreview();
+        },
+        pallets(id, d) {
+            const it = find(id);
+            const n = Math.min(MAX_PALLETS, Math.max(1, it.pals.length + d));
+            if (n === it.pals.length) return;
+            while (it.pals.length < n) it.pals.push(newPallet(it));
+            it.pals.length = n;
+            renderCards(); renderPreview();
+        },
+        remove(id) {
+            const i = ITEMS.findIndex(x => x.id === id);
+            if (i < 0 || !ITEMS[i].custom) return;
+            ITEMS.splice(i, 1); saveCustom(); refresh();
+        },
+        log(k, v) {
+            log[k] = v;
+            if (k === 'shift') { try { localStorage.setItem('ipm-shift', v); } catch (e) {} }
+            if (k === 'date' && !v) log.date = todayISO();
+            renderLogPreview(); renderIncPreview();
+        },
+        logItem(id, k, v) { find(id)[k] = v; renderLogPreview(); },
+        gen(key, v) { const g = GEN(key); g.value = v; genBuild(g); genTyped(key); },
+        genSpread(key, v) { const g = GEN(key); g.spread = v; genBuild(g); renderGen(); if (key !== 'free') renderPreview(); },
+        genTables(key, d) {
+            const g = GEN(key); g.tables = Math.min(MAX_PALLETS, Math.max(1, g.tables + d));
+            genBuild(g); renderGen(); if (key !== 'free') renderPreview();
+        },
+        genRegen(key) { genBuild(GEN(key)); renderGen(); if (key !== 'free') renderPreview(); },
+        genUse(id, on) { GEN(id).use = on; renderGen(); renderCards(); renderPreview(); },
+        inc(id, k, v) { find(id)[k] = v; renderIncPreview(); renderLogPreview(); },
+        incHeader(on) { inc.header = on; renderIncPreview(); },
+        trader(id, v) {
+            const it = find(id);
+            if (v === '__new') { it.addingTrader = true; it.trader = ''; }
+            else {
+                it.addingTrader = false; it.trader = v;
+                if (v) { traderMap[it.name] = v; persist('ipm-trader-map', traderMap); }
+            }
+            renderIncoming(); renderIncPreview();
+        },
+        newTrader(id, v) { find(id).trader = v.trim(); renderIncPreview(); },
+        saveTrader(id) {
+            const it = find(id), t = (it.trader || '').trim();
+            if (!t) return;
+            if (!traders().includes(t)) { traderExtra.push(t); persist('ipm-traders', traderExtra); }
+            traderMap[it.name] = t; persist('ipm-trader-map', traderMap);
+            it.addingTrader = false; renderIncoming(); renderIncPreview();
+        },
+        size(v) { sizePct = v; renderChips(); renderGen(); renderPreview(); },
+        async cloudPull() {
+            cloudStatus('⬇️ Pulling…');
+            try { await cloudPullNow(); } catch (e) { cloudStatus('⚠ Cannot read the cloud: ' + e.message, 'bad'); }
+        },
+        async cloudPush() {
+            cloudStatus('☁️ Saving…');
+            try { await cloudPushNow(); } catch (e) { cloudStatus('⚠ Cannot write the cloud: ' + e.message, 'bad'); }
+        },
+        async cloudSync() {
+            cloudStatus('⟳ Syncing…');
+            try { await cloudSyncNow(); } catch (e) { cloudStatus('⚠ Sync failed: ' + e.message, 'bad'); }
+        },
+        async cloudSaveNow() {
+            const rows = currentRows();
+            if (!rows.length) { cloudStatus('⚠ Select the incoming materials first.', 'bad'); return; }
+            cloudRows = mergeRows(cloudRows, rows);
+            saveCloudRows();
+            renderCloudRows();
+            cloudStatus(`＋ ${rows.length} row(s) added to this device's register — saving to the cloud…`);
+            try { await cloudPushNow(); } catch (e) { cloudStatus('⚠ Saved on this device, but the cloud failed: ' + e.message, 'bad'); }
+        },
+        cloudClearLocal() {
+            if (!confirm('Clear the register stored on THIS device only? The cloud copy stays untouched.')) return;
+            cloudRows = []; saveCloudRows(); renderCloudRows();
+            cloudStatus('🗑 This device\'s register was cleared (the cloud copy is untouched).');
+        }
+    };
+
+    window.selectAll = on => { ITEMS.forEach(it => it.sel = on); refresh(); };
+    window.regenerate = () => { ITEMS.forEach(it => { if (it.gsm) regenItem(it); }); renderPreview(); };
+    window.copyEmail = copyEmail;
+    window.copyLog = copyLog;
+    window.copyGen = copyGen;
+    window.copyIncoming = copyIncoming;
+    window.addItem = () => {
+        const name = $('add-name').value.trim();
+        if (!name) { $('add-name').focus(); return; }
+        const type = $('add-type').value || null;
+        const it = { id: nextId++, name: name.toUpperCase(), gsm: type, custom: true };
+        if (type) it.variant = type === 'wrap' ? 'savannah_spot' : 'savannah';
+        initItem(it); it.sel = true;
+        ITEMS.push(it);
+        saveCustom();
+        $('add-name').value = '';
+        refresh();
+    };
+
+    // ---------- Saved custom items (kept in this browser) ----------
+    const STORE_KEY = 'ipm-custom-items';
+    let storeOk = true;
+    function saveCustom() {
+        try {
+            const list = ITEMS.filter(it => it.custom).map(it => ({ name: it.name, gsm: it.gsm }));
+            localStorage.setItem(STORE_KEY, JSON.stringify(list));
+        } catch (e) { storeOk = false; showStoreNote(); }
+    }
+    function loadCustom() {
+        try {
+            const list = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+            list.forEach(o => {
+                if (!o || !o.name) return;
+                const it = { id: nextId++, name: String(o.name), gsm: (o.gsm === 'wrap' || o.gsm === 'stiff') ? o.gsm : null, custom: true };
+                if (it.gsm) it.variant = it.gsm === 'wrap' ? 'savannah_spot' : 'savannah';
+                initItem(it); ITEMS.push(it);
+            });
+        } catch (e) { storeOk = false; }
+        showStoreNote();
+    }
+    function showStoreNote() {
+        $('store-note').textContent = storeOk
+            ? '💾 Added items are saved on this device and stay after you close the file.'
+            : '⚠ Saving is not available here — open the file directly in Chrome (not the in-app preview) to keep added items.';
+    }
+    loadCustom();
+
+    // ---------- Dark mode ----------
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        $('theme-btn').textContent = t === 'dark' ? '☀️ Light' : '🌙 Dark';
+    }
+    window.toggleTheme = () => {
+        const t = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        applyTheme(t);
+        try { localStorage.setItem('ipm-theme', t); } catch (e) {}
+    };
+    (function initTheme() {
+        let t = null;
+        try { t = localStorage.getItem('ipm-theme'); } catch (e) {}
+        if (!t) t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        applyTheme(t);
+    })();
+
+    // ---------- Cloud register (our Firebase · own path · never the soap-log doc) ----------
+    const CLOUD_PATH = 'lab/incoming-pm-865b658190c198039dc1e173.json';
+    const CLOUD_URL = 'https://soap-lab-shift-sync-default-rtdb.europe-west1.firebasedatabase.app/' + CLOUD_PATH;
+    const PIN = '2780';
+    const SALT_KEY = 'ipm-cloud-salt', ROWS_KEY = 'ipm-cloud-rows';
+
+    const b64 = b => btoa(String.fromCharCode.apply(null, new Uint8Array(b)));
+    const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+    async function cloudKey(saltB64) {
+        const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(PIN), 'PBKDF2', false, ['deriveKey']);
+        return crypto.subtle.deriveKey(
+            { name: 'PBKDF2', salt: unb64(saltB64), iterations: 120000, hash: 'SHA-256' },
+            km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    }
+    function localSalt() {
+        let s = null;
+        try { s = localStorage.getItem(SALT_KEY); } catch (e) {}
+        if (!s) {
+            s = b64(crypto.getRandomValues(new Uint8Array(16)));
+            try { localStorage.setItem(SALT_KEY, s); } catch (e) {}
+        }
+        return s;
+    }
+    async function cloudRead() {
+        const r = await fetch(CLOUD_URL + '?cb=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' reading the cloud');
+        const body = await r.json();
+        if (!body || body.enc !== 'aesgcm') throw new Error('the cloud document is not encrypted');
+        const k = await cloudKey(body.salt);
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(body.iv) }, k, unb64(body.ct));
+        return { body, plain: JSON.parse(new TextDecoder().decode(pt)) };
+    }
+    async function cloudWrite(plain, saltB64) {
+        const k = await cloudKey(saltB64);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify(plain)));
+        const out = { v: 2, sv: 2, enc: 'aesgcm', salt: saltB64, iv: b64(iv), ct: b64(new Uint8Array(ct)) };
+        const r = await fetch(CLOUD_URL, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(out) });
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' writing the cloud');
+        const back = await cloudRead();                       /* verify */
+        const ok = JSON.stringify(back.plain.rows || []) === JSON.stringify(plain.rows || []);
+        if (!ok) throw new Error('verify: MISMATCH — someone changed the cloud at the same time');
+        return out;
+    }
+
+    let cloudRows = [];
+    try { cloudRows = JSON.parse(localStorage.getItem(ROWS_KEY) || '[]'); } catch (e) { cloudRows = []; }
+    if (!Array.isArray(cloudRows)) cloudRows = [];
+    function saveCloudRows() { try { localStorage.setItem(ROWS_KEY, JSON.stringify(cloudRows)); } catch (e) {} }
+
+    /* one row per material · key = date | shift | material · newest wins */
+    function mergeRows(a, b) {
+        const m = new Map();
+        for (const r of (a || []).concat(b || [])) {
+            if (!r || !r.k) continue;
+            const cur = m.get(r.k);
+            if (!cur || (r.ts || 0) >= (cur.ts || 0)) m.set(r.k, r);
+        }
+        return Array.from(m.values()).sort((x, y) =>
+            String(x.d || '').localeCompare(String(y.d || '')) ||
+            String(x.s || '').localeCompare(String(y.s || '')) ||
+            String(x.n || '').localeCompare(String(y.n || '')));
+    }
+
+    /* the rows currently shown in the Incoming Log section */
+    function currentRows() {
+        return ITEMS.filter(it => it.sel).map(it => {
+            const unit = it.gsm ? 'KG' : 'PC';
+            const rows = genRowsOf(it) || it.pals.map(p => p.row).filter(Boolean);
+            const samples = rows.length ? rows[0].map(v => +(+v).toFixed(2)) : [];
+            const avg = samples.length ? +(samples.reduce((a, b) => a + b, 0) / samples.length).toFixed(2) : null;
+            return {
+                k: [log.date, log.shift, it.name].join('|'),
+                d: log.date, s: log.shift, n: it.name, u: unit,
+                q: it.qty || '', t: it.truck || '', r: it.trader || '',
+                g: samples, a: avg, x: 'Approved', c: '',
+                ts: Date.now()
+            };
+        });
+    }
+
+    function cloudStatus(msg, kind) {
+        const el = $('cloud-status');
+        if (!el) return;
+        el.innerHTML = msg ? `<div>${esc(msg)}</div>` : '';
+        el.style.color = kind === 'bad' ? 'var(--bad)' : '';
+    }
+    function renderCloudRows() {
+        const el = $('cloud-rows');
+        if (!el) return;
+        if (!cloudRows.length) { el.innerHTML = '<div class="empty" style="color:#5c6786;">The register is empty on this device.</div>'; return; }
+        let h = '<table style="border-collapse:collapse;width:100%;font-size:12.5px;">' +
+            '<tr style="background:#F4B183;font-weight:bold;">' +
+            ['Date', 'Shift', 'RM Name', 'Unit', 'Qty', 'Truck', 'Trader', 'Samples', 'Avg'].map(t =>
+                `<td style="border:1px solid #000;padding:3px 5px;text-align:center;">${t}</td>`).join('') + '</tr>';
+        for (const r of cloudRows) {
+            h += '<tr>' + [
+                r.d, r.s, r.n, r.u, r.q, r.t, r.r,
+                (r.g && r.g.length) ? r.g.join(' · ') : '—',
+                r.a === null || r.a === undefined ? '—' : r.a
+            ].map(v => `<td style="border:1px solid #000;padding:3px 5px;text-align:center;">${esc(String(v === undefined || v === null ? '' : v))}</td>`).join('') + '</tr>';
+        }
+        el.innerHTML = h + '</table>';
+    }
+
+    async function cloudPullNow() {
+        const { plain } = await cloudRead();
+        const before = cloudRows.length;
+        cloudRows = mergeRows(cloudRows, plain.rows || []);
+        saveCloudRows();
+        renderCloudRows();
+        const when = plain.updatedAt ? new Date(plain.updatedAt).toLocaleString() : '—';
+        cloudStatus(`⬇️ Pulled from the cloud · ${cloudRows.length} row(s) in the register (${plain.rows ? plain.rows.length : 0} in the cloud) · cloud updated ${when}`);
+        return before;
+    }
+    async function cloudPushNow() {
+        const rows = mergeRows(cloudRows, currentRows());
+        cloudRows = rows;
+        saveCloudRows();
+        let salt = localSalt(), plain = null;
+        try {
+            const { body, plain: p } = await cloudRead();
+            salt = body.salt;                                  /* keep the same salt so every phone can decrypt */
+            plain = p;
+        } catch (e) { /* no document yet → create it with our salt */ }
+        const doc = {
+            v: 1, updatedAt: Date.now(), device: deviceId(),
+            rows: rows, traders: (plain && plain.traders) ? plain.traders : traders()
+        };
+        await cloudWrite(doc, salt);
+        renderCloudRows();
+        cloudStatus(`☁️ Saved to the cloud · ${rows.length} row(s) · ${new Date().toLocaleTimeString()}`);
+    }
+    function deviceId() {
+        let id = null;
+        try { id = localStorage.getItem('ipm-device'); } catch (e) {}
+        if (!id) {
+            id = 'dev-' + Math.random().toString(36).slice(2, 8);
+            try { localStorage.setItem('ipm-device', id); } catch (e) {}
+        }
+        return id;
+    }
+    async function cloudSyncNow() {
+        cloudStatus('⟳ Syncing…');
+        await cloudPullNow();
+        await cloudPushNow();
+    }
+
+    renderCloudRows();
+    try {
+        const note = $('cloud-note');
+        if (note) note.textContent = '🔒 Encrypted (AES-GCM 256) · cloud path: ' + CLOUD_PATH;
+    } catch (e) {}
+
+    // ---------- Service worker (PWA · offline) ----------
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+    }
+    /* first open: quietly pull the shared register */
+    setTimeout(() => { cloudPullNow().catch(() => {}); }, 1200);
+
+    renderChips(); renderGen(); refresh();
+})();
+</script>
+</body>
+</html>
