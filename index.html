@@ -190,9 +190,9 @@
         <h2>📊 Write into your Excel workbook</h2>
         <p class="sub">Open <b>Daily incoming RM &amp; PM.xlsx</b> once, then the Incoming Log goes into <b>RM&amp;PM 2026</b> and the Excel Log into <b>WRAPPER GSM</b> — straight to the first free row, exactly where you paste them today. On a computer the file itself is updated in place (no download).</p>
         <div class="toolbar">
+            <button class="btn-main" id="xl-openwrite-btn" onclick="PM.xlOpenWrite()">📥 Open my file &amp; write into it</button>
             <button class="btn" onclick="PM.xlOpen()">📂 Open my Excel file</button>
             <button class="btn" id="xl-write-btn" onclick="PM.xlWrite()" disabled>✍️ Write into the file</button>
-            <button class="btn" id="xl-share-btn" onclick="PM.xlShare()" hidden>📤 Send the updated file</button>
         </div>
         <div class="status" id="xl-status"></div>
         <div class="grid2">
@@ -838,8 +838,8 @@
                 .catch(e => cloudStatus('🗑 The rows were cleared on this phone — the cloud failed: ' + e.message, 'bad'));
         },
         xlOpen() { xlOpen(); },
+        xlOpenWrite() { xlOpenWrite(); },
         xlWrite() { xlWrite(); },
-        xlShare() { xlShare(); }
     };
 
     window.selectAll = on => { ITEMS.forEach(it => it.sel = on); refresh(); };
@@ -907,7 +907,7 @@
     })();
 
     // ---------- Excel workbook: write the rows straight into the plant file ----------
-    let xlBook = null, xlName = '', xlHandle = null, xlOut = null;
+    let xlBook = null, xlName = '', xlHandle = null, xlOut = null, xlFresh = false;
 
     function xlStatus(msg, kind) {
         const el = $('xl-status');
@@ -979,7 +979,7 @@
         if (plan) plan.innerHTML = html;
         if (btn) btn.disabled = !(wsIn || wsGsm) || (!d.inc.length && !d.log.length);
     }
-    async function xlOpen() {
+    async function xlLoad() {
         try {
             xlStatus('Opening the workbook…');
             /* the file picker MUST be asked for inside the click (the browser wants the
@@ -1014,14 +1014,24 @@
             }
             const note = $('xl-note');
             if (note) note.textContent = xlHandle
-                ? '🔒 The file stays open on this device — the export writes into it directly, no download.'
-                : '📥 On this device the export gives you the updated file to download and replace the old one (use "Send the updated file" to open it in Excel / Drive).';
+                ? '🔒 The file stays open on this device — the export writes into it directly, no download. Keep this tab open and you can write again any time.'
+                : '⚠ This browser cannot write into the file in place. Use Chrome or Edge on the computer for that — here you get the updated file to replace the old one.';
+            xlFresh = true;
             xlPlan();
-            xlStatus('✅ ' + xlName + ' is open — check the plan below, then press "Write into the file".');
+            return true;
         } catch (e) {
-            if (e && e.name === 'AbortError') { xlStatus(''); return; }
+            if (e && e.name === 'AbortError') { xlStatus(''); return false; }
             xlStatus('ERROR: ' + e.message, 'bad');
+            return false;
         }
+    }
+    async function xlOpen() {
+        if (await xlLoad()) xlStatus('✅ ' + xlName + ' is open — check the plan below, then press "Write into the file".');
+    }
+    async function xlOpenWrite() {
+        if (!await xlLoad()) return;
+        xlStatus('✅ ' + xlName + ' is open — writing now…');
+        await xlWrite();
     }
     async function xlWrite() {
         if (!xlBook) { xlStatus('Open your Excel file first.', 'bad'); return; }
@@ -1029,10 +1039,11 @@
             xlStatus('Writing into the workbook…');
             const ExcelJS = await xlEngine();
             let book = xlBook;
-            if (xlHandle) {                                  /* re-read: never lose Excel's own edits */
+            if (xlHandle && !xlFresh) {                      /* re-read: never lose Excel's own edits */
                 const f = await xlHandle.getFile();
                 book = await new ExcelJS.Workbook().xlsx.load(await f.arrayBuffer());
             }
+            xlFresh = false;
             const now = new Date();
             book.created = (book.created instanceof Date && !isNaN(book.created)) ? book.created : now;
             book.modified = now;
@@ -1095,9 +1106,6 @@
             xlStatus('ERROR: ' + e.message, 'bad');
         }
     }
-    function xlFile() {
-        return new File([xlOut], xlName || 'Daily incoming  RM & PM.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    }
     function xlDownload() {
         if (!xlOut) return;
         const blob = new Blob([xlOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -1106,15 +1114,6 @@
         a.download = xlName || 'workbook.xlsx';
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 8000);
-        const sb = $('xl-share-btn');
-        if (sb && navigator.canShare && navigator.canShare({ files: [xlFile()] })) sb.hidden = false;
-    }
-    async function xlShare() {
-        if (!xlOut) { xlStatus('Write into the file first.', 'bad'); return; }
-        const f = xlFile();
-        if (navigator.canShare && navigator.canShare({ files: [f] })) {
-            try { await navigator.share({ files: [f], title: xlName }); } catch (e) {}
-        } else xlDownload();
     }
 
     /* load the Excel engine in the background when this section comes into view */
