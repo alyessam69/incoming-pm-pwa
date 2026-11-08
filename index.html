@@ -36,6 +36,10 @@
     .install-btn { background:var(--accent); color:#fff; border:0; border-radius:20px; padding:8px 15px; font-size:13px; font-weight:700; box-shadow:0 2px 10px rgba(0,0,0,.22); }
     .install-btn:active { transform:translateY(1px); }
     .install-btn[hidden] { display:none; }
+    .topbar { display:flex; align-items:center; gap:10px; max-width:760px; margin:0 auto; padding:10px 12px 0; }
+    .tb-status { font-size:11.5px; color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tb-clear { background:var(--field); border:1px solid var(--line); color:var(--bad); border-radius:8px; padding:7px 12px; font-size:12.5px; font-weight:700; white-space:nowrap; }
+    .tb-clear:active { transform:translateY(1px); }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--ink); font-family:'Segoe UI',Roboto,Arial,sans-serif; line-height:1.45; }
     header.banner { background:linear-gradient(135deg,#0f5a8a 0%,#1e7fbf 60%,#3aa5e0 100%); color:#fff; padding:58px 18px 18px; text-align:center; }
@@ -104,6 +108,11 @@
     <p>Incoming Selection → Ready-to-send Approval Email</p>
     <div class="small">Powered by Chemist Ali Essam</div>
 </header>
+
+<div class="topbar">
+    <span class="tb-status" id="tb-status">☁️ the cloud holds everything — draft + register</span>
+    <button class="tb-clear" id="clear-all-btn" onclick="clearAllData()">🗑 Clear all data</button>
+</div>
 
 <main>
 
@@ -178,13 +187,13 @@
     </section>
 
     <section class="card" id="cloud-section">
-        <h2>☁️ Cloud Register</h2>
-        <p class="sub">The Incoming Log rows are kept in our encrypted cloud so every phone shows the same register. This app has its own cloud path — it never touches the Soap Bar Daily Log document.</p>
+        <h2>☁️ Cloud (everything)</h2>
+        <p class="sub">Everything lives in our encrypted cloud: the draft (ticks, quantities, truck, trader, pallet weights, generator) <b>and</b> the register rows. Any phone pulls the same work. This app has its own cloud path — the Soap Bar Daily Log is never touched.</p>
         <div class="toolbar">
             <button class="btn" onclick="PM.cloudPull()">⬇️ Pull from cloud</button>
             <button class="btn" onclick="PM.cloudPush()">☁️ Save to cloud</button>
             <button class="btn" onclick="PM.cloudSync()">⟳ Sync both</button>
-            <button class="btn" onclick="PM.cloudClearLocal()">🗑 Clear this device</button>
+            <button class="btn" onclick="PM.cloudClearRows()">🗑 Clear the register rows</button>
         </div>
         <div class="status" id="cloud-status"></div>
         <div class="toolbar">
@@ -804,10 +813,12 @@
             cloudStatus(`＋ ${rows.length} row(s) added to this device's register — saving to the cloud…`);
             try { await cloudPushNow(); } catch (e) { cloudStatus('⚠ Saved on this device, but the cloud failed: ' + e.message, 'bad'); }
         },
-        cloudClearLocal() {
-            if (!confirm('Clear the register stored on THIS device only? The cloud copy stays untouched.')) return;
+        cloudClearRows() {
+            if (!confirm('Clear the register rows (on this phone and in the cloud)? The draft stays untouched.')) return;
             cloudRows = []; saveCloudRows(); renderCloudRows();
-            cloudStatus('🗑 This device\'s register was cleared (the cloud copy is untouched).');
+            cloudPushNow()
+                .then(() => cloudStatus('🗑 The register rows were cleared (the draft is untouched).'))
+                .catch(e => cloudStatus('🗑 The rows were cleared on this phone — the cloud failed: ' + e.message, 'bad'));
         }
     };
 
@@ -879,7 +890,66 @@
     const CLOUD_PATH = 'lab/incoming-pm-865b658190c198039dc1e173.json';
     const CLOUD_URL = 'https://soap-lab-shift-sync-default-rtdb.europe-west1.firebasedatabase.app/' + CLOUD_PATH;
     const PIN = '2780';
-    const SALT_KEY = 'ipm-cloud-salt', ROWS_KEY = 'ipm-cloud-rows';
+    const SALT_KEY = 'ipm-cloud-salt', ROWS_KEY = 'ipm-cloud-rows', STATE_KEY = 'ipm-state';
+    let dirty = false, saveTimer = null;
+
+    /* ---------- The WHOLE app state (draft) — saved on the phone AND in the cloud ---------- */
+    function serializeState() {
+        return {
+            savedAt: Date.now(),
+            date: log.date, shift: log.shift, size: sizePct,
+            items: ITEMS.map(it => ({
+                name: it.name, gsm: it.gsm, variant: it.variant, sel: !!it.sel,
+                qty: it.qty || '', truck: it.truck || '', trader: it.trader || '', logQty: it.logQty || '',
+                pals: (it.pals || []).map(p => ({ variant: p.variant, width: p.width || '', repeat: p.repeat || '', weight: p.weight || '', row: p.row || null })),
+                gen: it.gen ? { value: it.gen.value, spread: it.gen.spread, tables: it.gen.tables, rows: it.gen.rows, use: it.gen.use } : null
+            })),
+            customItems: ITEMS.filter(it => it.custom).map(it => ({ name: it.name, gsm: it.gsm })),
+            traders: traders(),
+            traderMap: traderMap,
+            genFree: { value: freeGen.value, spread: freeGen.spread, tables: freeGen.tables, rows: freeGen.rows, use: freeGen.use }
+        };
+    }
+    function applyState(st) {
+        if (!st) return false;
+        if (st.date) log.date = st.date;
+        if (st.shift) log.shift = st.shift;
+        if (st.size) sizePct = st.size;
+        (st.customItems || []).forEach(o => {
+            if (!o || !o.name || ITEMS.some(it => it.name === o.name)) return;
+            const it = { id: nextId++, name: o.name, gsm: (o.gsm === 'wrap' || o.gsm === 'stiff') ? o.gsm : null, custom: true };
+            if (it.gsm) it.variant = it.gsm === 'wrap' ? 'savannah_spot' : 'savannah';
+            initItem(it); ITEMS.push(it);
+        });
+        (st.items || []).forEach(s => {
+            const it = ITEMS.find(x => x.name === s.name);
+            if (!it) return;
+            it.sel = !!s.sel;
+            it.qty = s.qty || ''; it.truck = s.truck || ''; it.trader = s.trader || ''; it.logQty = s.logQty || '';
+            if (s.pals) it.pals = s.pals.map(p => ({ variant: p.variant, width: p.width || '', repeat: p.repeat || '', weight: p.weight || '', row: p.row || null }));
+            if (s.gen) it.gen = { value: s.gen.value || '', spread: (s.gen.spread === undefined ? 0.2 : s.gen.spread), tables: s.gen.tables || 1, rows: s.gen.rows || [], use: !!s.gen.use };
+        });
+        if (st.genFree) {
+            freeGen.value = st.genFree.value || '';
+            freeGen.spread = (st.genFree.spread === undefined ? 0.2 : st.genFree.spread);
+            freeGen.tables = st.genFree.tables || 1;
+            freeGen.rows = st.genFree.rows || [];
+            freeGen.use = !!st.genFree.use;
+        }
+        if (st.traders) traderExtra = st.traders.filter(t => !TRADERS_BASE.includes(t));
+        if (st.traderMap) traderMap = st.traderMap;
+        saveCustom();                 /* keep the phone's own copy of the added items in step */
+        return true;
+    }
+    function saveLocalState(st) {
+        try { localStorage.setItem(STATE_KEY, JSON.stringify(st || serializeState())); } catch (e) {}
+        dirty = false;
+    }
+    function scheduleSave() {
+        dirty = true;
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => saveLocalState(), 350);
+    }
 
     const b64 = b => btoa(String.fromCharCode.apply(null, new Uint8Array(b)));
     const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -959,9 +1029,12 @@
 
     function cloudStatus(msg, kind) {
         const el = $('cloud-status');
-        if (!el) return;
-        el.innerHTML = msg ? `<div>${esc(msg)}</div>` : '';
-        el.style.color = kind === 'bad' ? 'var(--bad)' : '';
+        if (el) {
+            el.innerHTML = msg ? `<div>${esc(msg)}</div>` : '';
+            el.style.color = kind === 'bad' ? 'var(--bad)' : '';
+        }
+        const tb = $('tb-status');
+        if (tb) tb.textContent = msg ? String(msg).replace(/<[^>]+>/g, '') : '☁️ the cloud holds everything — draft + register';
     }
     function renderCloudRows() {
         const el = $('cloud-rows');
@@ -986,9 +1059,25 @@
         const before = cloudRows.length;
         cloudRows = mergeRows(cloudRows, plain.rows || []);
         saveCloudRows();
+        /* the draft: the cloud wins only when it is the newer one
+           and this phone has nothing of its own that was never published */
+        let local = null;
+        try { local = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (e) {}
+        const cs = plain.state;
+        const localSaved = local ? (local.savedAt || 0) : 0;
+        const pushedAt = +(localStorage.getItem('ipm-pushed-at') || 0);
+        const unpublished = localSaved > pushedAt;          /* local edits that never reached the cloud */
+        let applied = false;
+        if (cs && !unpublished && (cs.savedAt || 0) >= localSaved) {
+            applyState(cs);
+            saveLocalState(cs);          /* the cloud state is now the local one */
+            try { localStorage.setItem('ipm-pushed-at', String(cs.savedAt || 0)); } catch (e) {}
+            renderChips(); renderGen(); refresh();
+            applied = true;
+        }
         renderCloudRows();
         const when = plain.updatedAt ? new Date(plain.updatedAt).toLocaleString() : '—';
-        cloudStatus(`⬇️ Pulled from the cloud · ${cloudRows.length} row(s) in the register (${plain.rows ? plain.rows.length : 0} in the cloud) · cloud updated ${when}`);
+        cloudStatus(`⬇️ Pulled from the cloud · ${cloudRows.length} row(s) in the register · ${applied ? 'draft updated' : (unpublished ? 'your unsaved draft was kept' : 'your draft is newer — kept')} · cloud updated ${when}`);
         return before;
     }
     async function cloudPushNow() {
@@ -1001,13 +1090,17 @@
             salt = body.salt;                                  /* keep the same salt so every phone can decrypt */
             plain = p;
         } catch (e) { /* no document yet → create it with our salt */ }
+        const st = serializeState();
         const doc = {
-            v: 1, updatedAt: Date.now(), device: deviceId(),
-            rows: rows, traders: (plain && plain.traders) ? plain.traders : traders()
+            v: 2, updatedAt: Date.now(), device: deviceId(),
+            rows: rows, state: st,                            /* EVERYTHING: the draft + the register */
+            traders: (plain && plain.traders) ? plain.traders : traders()
         };
         await cloudWrite(doc, salt);
+        saveLocalState(st);                                    /* phone and cloud are identical now */
+        try { localStorage.setItem('ipm-pushed-at', String(st.savedAt || 0)); } catch (e) {}
         renderCloudRows();
-        cloudStatus(`☁️ Saved to the cloud · ${rows.length} row(s) · ${new Date().toLocaleTimeString()}`);
+        cloudStatus(`☁️ Saved to the cloud · ${rows.length} row(s) · draft included · ${new Date().toLocaleTimeString()}`);
     }
     function deviceId() {
         let id = null;
@@ -1020,9 +1113,58 @@
     }
     async function cloudSyncNow() {
         cloudStatus('⟳ Syncing…');
+        if (dirty) { await cloudPushNow(); return; }     /* local has fresh edits → keep them */
         await cloudPullNow();
-        await cloudPushNow();
     }
+
+    /* ---------- Clear everything (this phone + the cloud) ---------- */
+    window.clearAllData = async () => {
+        const ok = confirm('Clear ALL data?\n\n' +
+            '• the draft (ticks, quantities, truck, trader, pallet weights, generator)\n' +
+            '• the register rows\n' +
+            '• the items and traders you added\n\n' +
+            'On this phone AND in the cloud. This cannot be undone.');
+        if (!ok) return;
+        cloudStatus('🗑 Clearing…');
+        try {
+            const { body } = await cloudRead();          /* keep the same salt */
+            const st = serializeState();
+            st.items.forEach(it => {
+                it.sel = false; it.qty = ''; it.truck = ''; it.trader = ''; it.logQty = '';
+                it.pals = it.gsm ? [{ variant: it.variant || (it.gsm === 'wrap' ? 'savannah_spot' : 'savannah'), width: '', repeat: '', weight: '', row: null }] : [];
+                it.gen = null;
+            });
+            st.customItems = []; st.traderMap = {};
+            st.genFree = { value: '', spread: 0.2, tables: 1, rows: [], use: false };
+            st.size = 100;
+            await cloudWrite({ v: 2, updatedAt: Date.now(), device: deviceId(), rows: [], state: st, traders: TRADERS_BASE.slice() }, body.salt);
+        } catch (e) { /* no cloud document yet — nothing to wipe there */ }
+        ['ipm-state', 'ipm-cloud-rows', 'ipm-custom-items', 'ipm-traders', 'ipm-trader-map', 'ipm-pushed-at'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+        location.reload();
+    };
+
+    /* ---------- every change is saved on the phone and marked for the cloud ---------- */
+    (function trackChanges() {
+        const PMx = window.PM;
+        ['toggle', 'weight', 'dim', 'variant', 'pallets', 'remove', 'log', 'logItem', 'gen', 'genSpread',
+         'genTables', 'genRegen', 'genUse', 'inc', 'incHeader', 'trader', 'newTrader', 'saveTrader', 'size']
+            .forEach(k => {
+                const f = PMx[k];
+                if (typeof f !== 'function') return;
+                PMx[k] = function () { const r = f.apply(PMx, arguments); scheduleSave(); return r; };
+            });
+        ['addItem', 'selectAll', 'regenerate'].forEach(k => {
+            const f = window[k];
+            if (typeof f !== 'function') return;
+            window[k] = function () { const r = f.apply(null, arguments); scheduleSave(); return r; };
+        });
+    })();
+
+    /* ---------- restore the last state of this phone ---------- */
+    try {
+        const st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null');
+        if (st) applyState(st);
+    } catch (e) {}
 
     renderCloudRows();
     try {

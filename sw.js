@@ -2,7 +2,7 @@
    App shell is cached so the app opens and works with no network.
    The cloud (Firebase) requests are NEVER cached: they are encrypted
    and must always come from the server. */
-const VERSION = 'ipm-v2';
+const VERSION = 'ipm-v3';
 const SHELL = [
   './',
   './index.html',

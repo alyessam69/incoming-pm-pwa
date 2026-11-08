@@ -37,8 +37,13 @@ The cloud buttons need a network.
   `lab/incoming-pm-865b658190c198039dc1e173.json`
 - Encryption: **AES-GCM 256 + PBKDF2 120k**, PIN `2780` (same scheme as the other apps).
 - The `salt` is created once and never changes, so every phone can decrypt the document.
-- One row per material, keyed `date | shift | material` — on a merge the **newest row wins**.
-- *Clear this device* only wipes the local copy; the cloud copy is untouched.
+- **Everything is stored there**: the draft (ticks, quantities, truck, trader, pallet weights,
+  generator, added items) *and* the register rows.
+- Register rows are keyed `date | shift | material` — on a merge the **newest row wins**.
+- The draft is taken from the cloud only when the cloud copy is the newer one; a phone with
+  unsaved work of its own keeps it (and `⟳ Sync both` pushes it instead of overwriting it).
+- **🗑 Clear all data** (top of the page) wipes the draft, the register, the added items —
+  on the phone **and** in the cloud — so you can start fresh on every phone.
 
 ## Repo layout
 
