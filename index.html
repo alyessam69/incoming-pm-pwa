@@ -979,39 +979,59 @@
         if (plan) plan.innerHTML = html;
         if (btn) btn.disabled = !(wsIn || wsGsm) || (!d.inc.length && !d.log.length);
     }
+    function xlPickByInput() {
+        return new Promise(res => {
+            const i = document.createElement('input');
+            i.type = 'file'; i.accept = '.xlsx';
+            i.style.cssText = 'position:fixed;left:-9999px';
+            i.onchange = () => { const f = i.files && i.files[0]; i.remove(); res(f || null); };
+            document.body.appendChild(i);
+            i.click();
+        });
+    }
     async function xlLoad() {
         try {
             xlStatus('Opening the workbook…');
             /* the file picker MUST be asked for inside the click (the browser wants the
                user gesture) — so ask first, load the Excel engine while the user picks */
-            let pickPromise;
+            let pickPromise, fallback = false;
             if (window.showOpenFilePicker) {
                 pickPromise = window.showOpenFilePicker({
                     multiple: false,
                     types: [{ description: 'Excel workbook', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
                 });
             } else {
-                pickPromise = new Promise(res => {
-                    const i = document.createElement('input');
-                    i.type = 'file'; i.accept = '.xlsx';
-                    i.style.cssText = 'position:fixed;left:-9999px';
-                    i.onchange = () => { const f = i.files && i.files[0]; i.remove(); res(f || null); };
-                    document.body.appendChild(i);
-                    i.click();
-                });
+                pickPromise = xlPickByInput();
             }
             pickPromise.catch(() => {});
             const ExcelJS = await xlEngine();
-            const picked = await pickPromise;
-            if (!picked) { xlStatus(''); return; }
-            if (typeof picked.getFile === 'function') {          /* a real file handle */
-                xlHandle = picked; xlName = picked.name;
-                const f = await picked.getFile();
-                xlBook = await new ExcelJS.Workbook().xlsx.load(await f.arrayBuffer());
-            } else {                                             /* a plain File (phone) */
-                xlHandle = null; xlName = picked.name || 'workbook.xlsx';
-                xlBook = await new ExcelJS.Workbook().xlsx.load(await picked.arrayBuffer());
+            let picked = null;
+            try {
+                picked = await pickPromise;
+            } catch (e) {
+                if (e && e.name === 'AbortError') { xlStatus(''); return false; }    /* the user closed the dialog */
+                fallback = true;                                                    /* the browser refused it */
             }
+            /* the browser can hand back a list, a folder, or something we cannot read */
+            if (picked && Array.isArray(picked)) picked = picked[0];
+            let handle = null, file = null;
+            if (picked && typeof picked.getFile === 'function') {        /* a real file handle */
+                handle = picked;
+                file = await picked.getFile();
+            } else if (picked && typeof picked.arrayBuffer === 'function') {   /* a plain File */
+                file = picked;
+            } else if (picked && picked.kind === 'directory') {
+                xlStatus('⚠ That is a folder — please pick the .xlsx file itself.', 'bad');
+                return false;
+            } else {
+                if (!picked && !fallback) { xlStatus(''); return false; }            /* nothing was chosen */
+                console.warn('[xl] the browser gave us something we cannot read:', picked);
+                file = await xlPickByInput();                      /* the classic picker always gives a File */
+                if (!file) { xlStatus(''); return false; }
+            }
+            xlHandle = handle;
+            xlName = (handle && handle.name) || (file && file.name) || 'workbook.xlsx';
+            xlBook = await new ExcelJS.Workbook().xlsx.load(await file.arrayBuffer());
             const note = $('xl-note');
             if (note) note.textContent = xlHandle
                 ? '🔒 The file stays open on this device — the export writes into it directly, no download. Keep this tab open and you can write again any time.'
