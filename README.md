@@ -43,10 +43,13 @@ paste them today — no copy, no paste, no file juggling:
   `buildIncoming()` / `buildLog()` output — nothing is re-invented).
 - The new rows copy the look of the row above them, the AVERG column gets the live
   `=AVERAGE(G:L)` formula like the rest of the sheet, and empty boxes stay empty.
-- **On a computer (Chrome / Edge):** the export writes into **the same file on disk** — your
-  workbook is updated in place, nothing is downloaded.
-- **On the phone:** the export gives you the updated file (and a *Send the updated file*
-  button to open it straight in Excel / Drive) — replace the old copy with it.
+- **One button:** *📥 Open my file & write into it* opens the workbook and writes in one go.
+  Use *📂 Open my Excel file* + *✍️ Write into the file* if you want to check the plan first.
+- **On the computer (Chrome / Edge):** the export writes into **the same file on disk** — your
+  workbook is updated in place, nothing is downloaded. Keep the tab open and you can write
+  again any time.
+- Other browsers (e.g. Firefox) cannot write in place — they get the updated file to replace
+  the old copy with.
 - The file is re-read right before writing, so edits you made in Excel meanwhile are never lost.
 - The engine is [ExcelJS](https://github.com/exceljs/exceljs) (vendored in `vendor/`), which
   keeps the sheets, the formulas, the number formats, the borders and the merged cells.
