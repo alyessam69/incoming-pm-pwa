@@ -20,8 +20,11 @@ on our own Firebase — on its **own path**, separate from the Soap Bar Daily Lo
 
 ## Install on the phone
 
-**Android (Chrome)** — open the site → ⋮ menu → *Add to Home screen* / *Install app*.
-**iPhone (Safari)** — open the site → Share → *Add to Home Screen*.
+Tap the **⬇️ Install app** button in the top bar (it appears as soon as the app is installable).
+
+**Android (Chrome)** — the button opens the native install dialog → *Install*.
+**iPhone (Safari)** — the button shows the steps: Share ⬆️ → *Add to Home Screen* → *Add*.
+**Desktop Chrome** — the button explains it, or use the install icon in the address bar.
 
 After the first open the app works **offline** (the service worker caches the shell).
 The cloud buttons need a network.

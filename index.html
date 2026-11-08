@@ -31,10 +31,14 @@
     }
     [data-theme="dark"] header.banner { background:linear-gradient(135deg,#0b2f48 0%,#12476b 60%,#1a5f8c 100%); }
     header.banner { position:relative; }
-    .theme-btn { position:absolute; top:12px; right:12px; background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.4); border-radius:20px; padding:6px 12px; font-size:13px; font-weight:600; }
+    .theme-btn { background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.4); border-radius:20px; padding:6px 12px; font-size:13px; font-weight:600; }
+    .hdr-btns { position:absolute; top:12px; right:12px; display:flex; gap:8px; align-items:center; z-index:6; }
+    .install-btn { background:var(--accent); color:#fff; border:0; border-radius:20px; padding:8px 15px; font-size:13px; font-weight:700; box-shadow:0 2px 10px rgba(0,0,0,.22); }
+    .install-btn:active { transform:translateY(1px); }
+    .install-btn[hidden] { display:none; }
     * { box-sizing:border-box; }
     body { margin:0; background:var(--bg); color:var(--ink); font-family:'Segoe UI',Roboto,Arial,sans-serif; line-height:1.45; }
-    header.banner { background:linear-gradient(135deg,#0f5a8a 0%,#1e7fbf 60%,#3aa5e0 100%); color:#fff; padding:24px 18px 18px; text-align:center; }
+    header.banner { background:linear-gradient(135deg,#0f5a8a 0%,#1e7fbf 60%,#3aa5e0 100%); color:#fff; padding:58px 18px 18px; text-align:center; }
     header.banner h1 { margin:0 0 4px; font-size:22px; }
     header.banner p { margin:0; opacity:.92; font-size:14px; }
     header.banner .small { margin-top:6px; font-size:12px; opacity:.8; }
@@ -92,7 +96,10 @@
 <body>
 
 <header class="banner">
-    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
+    <div class="hdr-btns">
+        <button class="install-btn" id="install-btn" hidden onclick="installApp()">⬇️ Install app</button>
+        <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
+    </div>
     <h1>📥 IFFCO Egypt · Incoming PM</h1>
     <p>Incoming Selection → Ready-to-send Approval Email</p>
     <div class="small">Powered by Chemist Ali Essam</div>
@@ -1022,6 +1029,44 @@
         const note = $('cloud-note');
         if (note) note.textContent = '🔒 Encrypted (AES-GCM 256) · cloud path: ' + CLOUD_PATH;
     } catch (e) {}
+
+    // ---------- Install app (PWA) ----------
+    let installPrompt = null;
+    const isStandalone = () => (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    function showInstallBtn(label) {
+        const b = $('install-btn');
+        if (b && !isStandalone()) { b.textContent = label; b.hidden = false; }
+    }
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();                       /* we show our own button */
+        installPrompt = e;
+        showInstallBtn('⬇️ Install app');
+    });
+    window.addEventListener('appinstalled', () => {
+        installPrompt = null;
+        const b = $('install-btn');
+        if (b) b.hidden = true;
+        cloudStatus('✅ App installed — open it from your home screen now.');
+    });
+    window.installApp = async () => {
+        const b = $('install-btn');
+        if (installPrompt) {
+            installPrompt.prompt();
+            let outcome = 'dismissed';
+            try { outcome = (await installPrompt.userChoice).outcome; } catch (err) {}
+            installPrompt = null;
+            if (outcome === 'accepted') { if (b) b.hidden = true; }
+            else if (b) b.textContent = '⬇️ Install app';
+            return;
+        }
+        /* iPhone / Safari has no install prompt → show the manual steps */
+        alert(isIOS()
+            ? 'To install on iPhone:\n\n1. Tap the Share button  ⬆️\n2. Scroll down → "Add to Home Screen"\n3. Tap "Add"\n\nIt will then open like an app, offline included.'
+            : 'To install:\n\n• Android (Chrome): ⋮ menu → "Install app" or "Add to Home screen"\n• iPhone (Safari): Share ⬆️ → "Add to Home Screen"\n• Desktop Chrome: install icon in the address bar');
+    };
+    if (isIOS()) showInstallBtn('📲 Add to Home Screen');
+    if (isStandalone()) { const b = $('install-btn'); if (b) b.hidden = true; }
 
     // ---------- Service worker (PWA · offline) ----------
     if ('serviceWorker' in navigator) {
