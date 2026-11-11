@@ -51,6 +51,10 @@ paste them today — no copy, no paste, no file juggling:
 - Other browsers (e.g. Firefox) cannot write in place — they get the updated file to replace
   the old copy with.
 - The file is re-read right before writing, so edits you made in Excel meanwhile are never lost.
+- Every new row takes the format the factory rows have: each column uses the **most common** look of
+  its own rows (the factory sheets were made by hand, so a few rows can differ). A broken format in
+  the file — a wrong font, a colour, a *text* number format, a wrong height — can never come into
+  the new rows.
 - The engine is [ExcelJS](https://github.com/exceljs/exceljs) (vendored in `vendor/`), which
   keeps the sheets, the formulas, the number formats, the borders and the merged cells.
   A workbook re-written by it keeps everything; only text line-breaks are normalised (CR→LF).
