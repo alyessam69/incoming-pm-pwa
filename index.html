@@ -1053,6 +1053,12 @@
         xlStatus('✅ ' + xlName + ' is open — writing now…');
         await xlWrite();
     }
+    /* the weights always show TWO decimals: 59.94 - never 59.9412 */
+    function xl2dec(v) {
+        const n = parseFloat(v);
+        if (isNaN(n)) return v;
+        return parseFloat(n.toFixed(2));
+    }
     /* the format of the rows we write: the MOST COMMON format of the data rows
        of the sheet - a broken row (a wrong font, a colour, a text format, a
        wrong height) can never change what we paste. */
@@ -1150,11 +1156,19 @@
                 d.inc.forEach(row => {
                     for (let i = 0; i < 13; i++) {
                         const cell = wsIn.getCell(r, 1 + i);
-                        cell.style = xlCellStyle(tmplIn.cols[1 + i]);   /* never a broken format */
+                        const st = xlCellStyle(tmplIn.cols[1 + i]);   /* never a broken format */
                         const v = row[i] === undefined ? '' : row[i];
-                        if (i === 0) { const dd = xlDate(v); if (dd) { cell.value = dd; cell.numFmt = 'dd/mm/yyyy'; } else cell.value = v === '' ? null : v; }
-                        else if (i === 4 || i === 5) { const nv = xlNum(v); cell.value = (nv === '' ? null : nv); }
+                        if (i === 0) { const dd = xlDate(v); if (dd) { st.numFmt = 'dd/mm/yyyy'; cell.value = dd; } else cell.value = v === '' ? null : v; }
+                        else if (i === 4) {                     /* the quantity - two decimals */
+                            const nv = xlNum(v);
+                            st.numFmt = '0.00';
+                            cell.value = (nv === '' ? null : xl2dec(nv));
+                        }
+                        else if (i === 5) {                     /* the truck: "1675/9641" must stay as it is */
+                            cell.value = (v === '') ? null : (isNaN(parseFloat(v)) || !/^-?\d+(\.\d+)?$/.test(v.trim()) ? v : xlNum(v));
+                        }
                         else cell.value = v === '' ? null : v;
+                        cell.style = st;                     /* the clean format of the sheet */
                     }
                     if (tmplIn.height) wsIn.getRow(r).height = tmplIn.height;
                     r++;
@@ -1168,17 +1182,24 @@
                 d.log.forEach(row => {
                     for (let i = 0; i < 12; i++) {
                         const cell = wsGsm.getCell(r, 2 + i);
-                        cell.style = xlCellStyle(tmplG.cols[2 + i]);   /* never a broken format */
+                        const st = xlCellStyle(tmplG.cols[2 + i]);   /* never a broken format */
                         const v = row[i] === undefined ? '' : row[i];
-                        if (i === 3 || (i >= 5 && i <= 10)) { const nv = xlNum(v); cell.value = (nv === '' ? null : nv); }
+                        if (i === 3 || (i >= 5 && i <= 10)) {   /* the quantity + the 6 samples - two decimals */
+                            const nv = xlNum(v);
+                            st.numFmt = '0.00';
+                            cell.value = (nv === '' ? null : xl2dec(nv));
+                        }
                         else cell.value = v === '' ? null : v;
+                        cell.style = st;
                     }
                     const ac = wsGsm.getCell(r, 13);
-                    ac.style = xlCellStyle(tmplG.cols[13]);
+                    const ast = xlCellStyle(tmplG.cols[13]);
+                    ast.numFmt = '0.00';
+                    ac.style = ast;
                     const hasSamples = row.slice(5, 11).some(x => typeof xlNum(x) === 'number');
                     if (hasSamples) {
                         ac.value = { formula: 'AVERAGE(' + xlCol(2 + 5) + r + ':' + xlCol(2 + 10) + r + ')' };
-                    } else ac.value = xlNum(row[11]);
+                    } else { const an = xlNum(row[11]); ac.value = (an === '' ? null : xl2dec(an)); }
                     if (tmplG.height) wsGsm.getRow(r).height = tmplG.height;
                     r++;
                 });
