@@ -1053,6 +1053,77 @@
         xlStatus('✅ ' + xlName + ' is open — writing now…');
         await xlWrite();
     }
+    /* the format of the rows we write: the MOST COMMON format of the data rows
+       of the sheet - a broken row (a wrong font, a colour, a text format, a
+       wrong height) can never change what we paste. */
+    function xlColKey(ws, rn, c) {
+        const st = ws.getCell(rn, c).style || {};
+        const f = st.font || {}, a = st.alignment || {};
+        /* the number format is counted on its own - the factory sheets have
+           rows with a different date format, and that must not split the
+           group of the rows that look the same */
+        return [f.name || '', f.size || '', f.bold ? 'b' : '', f.italic ? 'i' : '',
+            a.horizontal || '', a.vertical || '',
+            (st.fill && st.fill.type) ? 'f' : ''].join('|');
+    }
+    function xlRowTemplate(ws, c1, c2) {
+        const rows = [];
+        ws.eachRow({ includeEmpty: false }, (row, rn) => {
+            for (let c = c1; c <= c2; c++) {
+                const v = ws.getCell(rn, c).value;
+                if (v !== null && v !== undefined && String(v).trim() !== '') { rows.push(rn); return; }
+            }
+        });
+        /* every column takes the MOST COMMON format of its own rows - the
+           factory sheets were made by hand and a column can have a few rows
+           that are different (a stray font, a stray colour...) */
+        const cols = {};
+        for (let c = c1; c <= c2; c++) {
+            const counts = {}; let best = null, bestN = 0;
+            rows.forEach(rn => {
+                const k = xlColKey(ws, rn, c);
+                counts[k] = (counts[k] || 0) + 1;
+                if (counts[k] > bestN) { bestN = counts[k]; best = rn; }
+            });
+            const ref = best || rows[0] || 1;
+            const src = ws.getCell(ref, c);
+            const st = (src && src.style) ? JSON.parse(JSON.stringify(src.style)) : null;
+            const s = st || {};
+            const f = s.font || {}, a = s.alignment || {};
+            /* the number format: the most common one of the column */
+            const nf = {}; let nfBest = null, nfN = 0;
+            rows.forEach(rn => {
+                const v = (ws.getCell(rn, c).style || {}).numFmt || 'General';
+                nf[v] = (nf[v] || 0) + 1;
+                if (nf[v] > nfN) { nfN = nf[v]; nfBest = v; }
+            });
+            cols[c] = {
+                numFmt: nfBest || s.numFmt || 'General',
+                font: { name: f.name || 'Times New Roman', size: f.size || 14, bold: (f.bold === undefined ? false : f.bold), italic: !!f.italic, underline: f.underline, color: f.color },
+                alignment: { horizontal: (a.horizontal || 'center'), vertical: (a.vertical || 'center') },
+                fill: s.fill || { type: 'pattern', pattern: 'none' },
+                border: s.border || {}
+            };
+        }
+        /* the height: the most common one of the rows */
+        const hn = {}; let hb = null, hbN = 0;
+        rows.forEach(rn => {
+            let hh = 0; try { hh = ws.getRow(rn).height || 0; } catch (e) { }
+            if (hh) { hn[hh] = (hn[hh] || 0) + 1; if (hn[hh] > hbN) { hbN = hn[hh]; hb = hh; } }
+        });
+        return { cols: cols, height: hb || null, ref: rows[0] || 1 };
+    }
+    /* the clean style of one cell (the borders stay as the factory has them) */
+    function xlCellStyle(t) {
+        t = t || {};
+        return {
+            numFmt: t.numFmt || 'General',
+            font: t.font || { name: 'Times New Roman', size: 14, bold: false },
+            alignment: t.alignment || { horizontal: 'center', vertical: 'center' },
+            fill: t.fill || { type: 'pattern', pattern: 'none' },
+            border: t.border || {}
+        };
+    }
     async function xlWrite() {
         if (!xlBook) { xlStatus('Open your Excel file first.', 'bad'); return; }
         try {
@@ -1075,15 +1146,17 @@
             if (wsIn && d.inc.length) {
                 let r = xlNextRow(wsIn, 1, 13);
                 const start = r;
+                const tmplIn = xlRowTemplate(wsIn, 1, 13);      /* the clean format */
                 d.inc.forEach(row => {
                     for (let i = 0; i < 13; i++) {
-                        const cell = wsIn.getCell(r, 1 + i), src = wsIn.getCell(r - 1, 1 + i);
-                        if (src && src.style) cell.style = JSON.parse(JSON.stringify(src.style));
+                        const cell = wsIn.getCell(r, 1 + i);
+                        cell.style = xlCellStyle(tmplIn.cols[1 + i]);   /* never a broken format */
                         const v = row[i] === undefined ? '' : row[i];
                         if (i === 0) { const dd = xlDate(v); if (dd) { cell.value = dd; cell.numFmt = 'dd/mm/yyyy'; } else cell.value = v === '' ? null : v; }
                         else if (i === 4 || i === 5) { const nv = xlNum(v); cell.value = (nv === '' ? null : nv); }
                         else cell.value = v === '' ? null : v;
                     }
+                    if (tmplIn.height) wsIn.getRow(r).height = tmplIn.height;
                     r++;
                 });
                 done.push('📥 ' + d.inc.length + ' row(s) → ' + nameIn + ' row ' + start);
@@ -1091,21 +1164,22 @@
             if (wsGsm && d.log.length) {
                 let r = xlNextRow(wsGsm, 2, 13);
                 const start = r;
+                const tmplG = xlRowTemplate(wsGsm, 2, 13);        /* the clean format */
                 d.log.forEach(row => {
                     for (let i = 0; i < 12; i++) {
-                        const cell = wsGsm.getCell(r, 2 + i), src = wsGsm.getCell(r - 1, 2 + i);
-                        if (src && src.style) cell.style = JSON.parse(JSON.stringify(src.style));
+                        const cell = wsGsm.getCell(r, 2 + i);
+                        cell.style = xlCellStyle(tmplG.cols[2 + i]);   /* never a broken format */
                         const v = row[i] === undefined ? '' : row[i];
                         if (i === 3 || (i >= 5 && i <= 10)) { const nv = xlNum(v); cell.value = (nv === '' ? null : nv); }
                         else cell.value = v === '' ? null : v;
                     }
                     const ac = wsGsm.getCell(r, 13);
+                    ac.style = xlCellStyle(tmplG.cols[13]);
                     const hasSamples = row.slice(5, 11).some(x => typeof xlNum(x) === 'number');
                     if (hasSamples) {
                         ac.value = { formula: 'AVERAGE(' + xlCol(2 + 5) + r + ':' + xlCol(2 + 10) + r + ')' };
-                        const nf = wsGsm.getCell(r - 1, 13).numFmt;
-                        if (nf) ac.numFmt = nf;
                     } else ac.value = xlNum(row[11]);
+                    if (tmplG.height) wsGsm.getRow(r).height = tmplG.height;
                     r++;
                 });
                 done.push('📤 ' + d.log.length + ' row(s) → ' + nameGsm + ' row ' + start);
