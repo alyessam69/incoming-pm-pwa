@@ -7,6 +7,10 @@
 <meta name="description" content="Incoming Selection → Ready-to-send Approval Email. Offline-capable PWA with encrypted cloud sync.">
 <meta name="theme-color" content="#0f5a8a">
 <link rel="manifest" href="manifest.webmanifest">
+<script>/* the browser can fire the install event before the body script runs
+   (the manifest is in <head> and the service worker is already active),
+   so we catch it here and keep it for the button below. */
+window.__installPrompt=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__installPrompt=e;});</script>
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -188,7 +192,7 @@
 
     <section class="card" id="xl-section">
         <h2>📊 Write into your Excel workbook</h2>
-        <p class="sub">Open <b>Daily incoming RM &amp; PM.xlsx</b> once, then the Incoming Log goes into <b>RM&amp;PM 2026</b> and the Excel Log into <b>WRAPPER GSM</b> — straight to the first free row, exactly where you paste them today. On a computer the file itself is updated in place (no download).</p>
+        <p class="sub">Open <b>Daily incoming RM &amp; PM.xlsx</b> once, then the Incoming Log goes into <b>RM&amp;PM 2026</b> and the Excel Log into <b>WRAPPER &amp; Stiffener GSM</b> — straight to the first free row, exactly where you paste them today. On a computer the file itself is updated in place (no download).</p>
         <div class="toolbar">
             <button class="btn-main" id="xl-openwrite-btn" onclick="PM.xlOpenWrite()">📥 Open my file &amp; write into it</button>
             <button class="btn" onclick="PM.xlOpen()">📂 Open my Excel file</button>
@@ -197,7 +201,7 @@
         <div class="status" id="xl-status"></div>
         <div class="grid2">
             <div><label class="lb">Incoming Log → sheet</label><input type="text" id="xl-sheet-in" value="RM&amp;PM 2026" inputmode="text"></div>
-            <div><label class="lb">Excel Log → sheet</label><input type="text" id="xl-sheet-gsm" value="WRAPPER GSM" inputmode="text"></div>
+            <div><label class="lb">Excel Log → sheet</label><input type="text" id="xl-sheet-gsm" value="WRAPPER &amp; Stiffener GSM" inputmode="text"></div>
         </div>
         <div class="sheet" id="xl-plan"></div>
         <div class="store-note" id="xl-note"></div>
@@ -1562,6 +1566,11 @@
     };
     if (isIOS()) showInstallBtn('📲 Add to Home Screen');
     if (isStandalone()) { const b = $('install-btn'); if (b) b.hidden = true; }
+    /* the event can arrive before this script runs -> the early listener in <head> kept it */
+    if (window.__installPrompt) { installPrompt = window.__installPrompt; showInstallBtn('⬇️ Install app'); }
+    /* desktop: the event does not always come (Firefox, already installed, or
+       dismissed earlier) -> keep the button visible so it can still be installed */
+    if (!isIOS() && !isStandalone() && !installPrompt) showInstallBtn('⬇️ Install app');
 
     // ---------- Service worker (PWA · offline) ----------
     if ('serviceWorker' in navigator) {

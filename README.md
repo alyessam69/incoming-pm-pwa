@@ -37,7 +37,7 @@ paste them today — no copy, no paste, no file juggling:
 | Block | Goes to | Columns | Row |
 |---|---|---|---|
 | **Incoming Log** | `RM&PM 2026` | A–M | the first free row after the last one |
-| **Excel Log** | `WRAPPER GSM` | B–M | the first free row after the last one |
+| **Excel Log** | `WRAPPER & Stiffener GSM` | B–M | the first free row after the last one |
 
 - The values written are **exactly** the ones the Copy buttons produce (the app reads its own
   `buildIncoming()` / `buildLog()` output — nothing is re-invented).
